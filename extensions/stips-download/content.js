@@ -1,7 +1,7 @@
 /**
  * Stips Download - Content Script
- * Seamless turquoise header injection, zero interference with chat inputs or sidebars,
- * shadow-DOM progress modal, and resilient background download coordinator.
+ * Seamless turquoise chat header injection, zero interference with main site header,
+ * chat inputs or sidebars, shadow-DOM progress modal, and resilient background download coordinator.
  */
 
 (() => {
@@ -28,7 +28,7 @@
 
   // Download Icon SVG
   const DOWNLOAD_ICON_SVG = `
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
       <polyline points="7 10 12 15 17 10"></polyline>
       <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -95,7 +95,7 @@
     }
   });
 
-  // Track clicks on user cards / links across the page to predict active chat
+  // Track clicks on user cards / links across the page
   document.addEventListener('click', (e) => {
     try {
       const target = e.target;
@@ -151,89 +151,115 @@
     return myProfileInfo;
   }
 
-  // 3. Locate the REAL Turquoise Header Bar at the top of the active chat
-  // STRICT RULE: Never match the chat input area, message footer, or sidebar!
-  function findTurquoiseChatHeader() {
-    // Candidates: toolbars, headers, dialog top divs
-    const candidates = document.querySelectorAll('mat-toolbar, header, [class*="chat"] div, [role="dialog"] div, .cdk-overlay-container div, div');
+  // 3. Locate the Active Chat Dialog Container (Width 250px - 720px, Height >= 180px)
+  // STRICT RULE: Never match the full-width main site header, navbar, or sidebar!
+  function findActiveChatDialog() {
+    // 1. Angular CDK overlay containers / Material dialogs / Stips chat popups
+    const containers = document.querySelectorAll(
+      '.cdk-overlay-pane, [role="dialog"], .mat-dialog-container, app-conversation, app-chat, [class*="chat-dialog"], [class*="chat-window"], [class*="chat-box"], [class*="conversation"]'
+    );
 
+    for (const el of containers) {
+      if (el.offsetParent === null) continue; // hidden
+      // Must be an actual chat dialog size, not full page width!
+      if (el.clientWidth >= 250 && el.clientWidth <= 720 && el.clientHeight >= 180) {
+        // Exclude site navbars or sidebars
+        if (el.closest('header, .site-header, app-header, mat-sidenav, mat-drawer, nav')) continue;
+        return el;
+      }
+    }
+
+    // 2. Fallback: Find 3-dots icon (⋮) in an open chat and get its dialog container
+    const icons = document.querySelectorAll('mat-icon, button, [role="button"], span');
+    for (const ic of icons) {
+      const txt = (ic.textContent || '').trim();
+      if (txt === '⋮' || txt === 'more_vert' || txt === '•••') {
+        if (ic.closest('header, .site-header, app-header, mat-sidenav, mat-drawer, nav')) continue;
+        let cur = ic.parentElement;
+        while (cur && cur !== document.body) {
+          if (cur.clientWidth >= 250 && cur.clientWidth <= 720 && cur.clientHeight >= 180 && cur.offsetParent !== null) {
+            return cur;
+          }
+          cur = cur.parentElement;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // 4. Locate the Turquoise Header strictly INSIDE the Active Chat Dialog
+  function findTurquoiseChatHeader() {
+    const dialog = findActiveChatDialog();
+    if (!dialog) return null;
+
+    // Search strictly INSIDE the chat dialog for its top bar
+    const candidates = dialog.querySelectorAll('mat-toolbar, header, [class*="header"], [class*="top"], div');
     for (const el of candidates) {
-      // Must be visible and sized appropriately for a chat top bar
-      if (el.clientHeight < 36 || el.clientHeight > 92 || el.clientWidth < 160) continue;
+      if (el.clientHeight < 36 || el.clientHeight > 92) continue;
+      if (el.clientWidth < 180 || el.clientWidth > 720) continue;
       if (el.offsetParent === null) continue;
 
       // STRICT EXCLUSION: Never touch the bottom input area or footer!
       if (el.querySelector('input, textarea, [class*="send"], [class*="emoji"]')) continue;
 
-      // STRICT EXCLUSION: Never touch sidebar/navigation drawer!
-      if (el.closest('mat-sidenav, mat-drawer, nav, aside, [class*="sidenav"], [class*="drawer"], [class*="sidebar"]')) {
-        continue;
-      }
-
-      // Check computed background color: Stips signature turquoise is rgb(9, 194, 134)
+      // Check turquoise background color (rgb(9, 194, 134))
       const bg = window.getComputedStyle(el).backgroundColor;
       const rgb = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
       if (rgb) {
         const r = parseInt(rgb[1], 10);
         const g = parseInt(rgb[2], 10);
         const b = parseInt(rgb[3], 10);
-
-        if (g >= 160 && b >= 85 && r <= 75) {
-          // Double check: does it contain 3-dots menu or avatar or user name?
-          const hasDots = el.textContent.includes('⋮') || 
-                          el.textContent.includes('more_vert') || 
-                          el.querySelector('mat-icon, [class*="dots"], [class*="more"], [class*="menu"], button');
-          const hasAvatar = el.querySelector('img, [class*="avatar"]');
-          if (hasDots || hasAvatar) {
-            return el;
-          }
+        if (g >= 150 && b >= 80 && r <= 85) {
+          return el;
         }
+      }
+
+      // Check if it contains the 3-dots icon or partner avatar/name
+      const txt = el.textContent || '';
+      if (txt.includes('⋮') || txt.includes('more_vert') || el.querySelector('mat-icon, [class*="dots"]')) {
+        return el;
       }
     }
 
-    // Fallback: Find 3-dots icon inside a visible dialog/chat top area
-    const icons = document.querySelectorAll('mat-icon, button, [role="button"], span');
-    for (const ic of icons) {
-      const txt = (ic.textContent || '').trim();
-      if (txt === '⋮' || txt === 'more_vert' || txt === '•••') {
-        if (ic.closest('mat-sidenav, mat-drawer, nav, aside, [class*="sidenav"], [class*="drawer"]')) continue;
-        const parentHeader = ic.closest('mat-toolbar, header, div');
-        if (parentHeader && parentHeader.clientHeight >= 36 && parentHeader.clientHeight <= 92 && parentHeader.clientWidth >= 160) {
-          if (!parentHeader.querySelector('input, textarea')) {
-            return parentHeader;
-          }
-        }
-      }
+    // Fallback: check first child of dialog if sized properly
+    const first = dialog.firstElementChild;
+    if (first && first.clientHeight >= 36 && first.clientHeight <= 92 && !first.querySelector('input, textarea')) {
+      return first;
     }
 
     return null;
   }
 
-  // Find 3-dots button inside the turquoise header
-  function findThreeDotsInHeader(header) {
+  // Find top-level child of header containing the 3-dots button
+  function findTopChildForThreeDots(header) {
     if (!header) return null;
     const buttons = header.querySelectorAll('button, [role="button"], mat-icon, span');
     for (const b of buttons) {
       const txt = (b.textContent || '').trim();
       if (txt === '⋮' || txt === 'more_vert' || txt === '•••' || b.getAttribute('aria-label')?.includes('עוד')) {
-        let target = b;
-        while (target.parentElement && target.parentElement !== header) {
-          target = target.parentElement;
+        let cur = b;
+        while (cur.parentElement && cur.parentElement !== header) {
+          cur = cur.parentElement;
         }
-        return target;
+        return cur;
       }
     }
     return null;
   }
 
-  // 4. Resolve Partner Info (Name & ID) from Turquoise Header and Environment
+  // 5. Resolve Partner Info (Name & ID) from Chat Header and Environment
   function resolveChatPartner(header) {
     if (!header) return null;
 
     let partnerName = '';
     let partnerId = null;
 
-    // A. Extract name from leaf text nodes inside turquoise header
+    // A. Check URL: /messages/:id or /profile/:id
+    const locMatch = window.location.href.match(/\/(?:messages|profile)\/(\d+)/);
+    if (locMatch) partnerId = Number(locMatch[1]);
+
+    // B. Extract name from leaf text nodes inside turquoise header
     const textEls = header.querySelectorAll('h1, h2, h3, h4, span, div, a');
     for (const t of textEls) {
       if (t.children.length > 0) continue;
@@ -245,14 +271,14 @@
       }
     }
 
-    // B. Check if header has link
+    // C. Check if header has link
     const headerLink = header.querySelector('a[href*="/profile/"], a[href*="/messages/"]');
     if (headerLink) {
       const m = (headerLink.getAttribute('href') || '').match(/\/(?:profile|messages)\/(\d+)/);
       if (m) partnerId = Number(m[1]);
     }
 
-    // C. Check image src in header
+    // D. Check image src in header
     if (!partnerId) {
       const img = header.querySelector('img');
       if (img && img.src) {
@@ -261,17 +287,17 @@
       }
     }
 
-    // D. Check detectedPartnerId from network hook
+    // E. Check detectedPartnerId from network hook
     if (!partnerId && detectedPartnerId) {
       partnerId = detectedPartnerId;
     }
 
-    // E. Check partnerIdMap by partnerName
+    // F. Check partnerIdMap by partnerName
     if (!partnerId && partnerName && partnerIdMap.has(partnerName)) {
       partnerId = partnerIdMap.get(partnerName);
     }
 
-    // F. Check lastClickedPartner if clicked recently (< 60s)
+    // G. Check lastClickedPartner if clicked recently (< 60s)
     if (!partnerId && lastClickedPartner && (Date.now() - lastClickedPartner.time < 60000)) {
       if (!partnerName || partnerName === lastClickedPartner.name || !lastClickedPartner.name) {
         partnerId = lastClickedPartner.id;
@@ -279,11 +305,11 @@
       }
     }
 
-    // G. Scan page for card with the same partnerName
+    // H. Scan page for card with the same partnerName
     if (!partnerId && partnerName) {
       const allLinks = document.querySelectorAll('a[href*="/profile/"], a[href*="/messages/"]');
       for (const a of allLinks) {
-        if (a.closest('mat-sidenav, mat-drawer')) continue;
+        if (a.closest('mat-sidenav, mat-drawer, header')) continue;
         if (cleanRawUserName(a.textContent) === partnerName) {
           const m = (a.getAttribute('href') || '').match(/\/(?:profile|messages)\/(\d+)/);
           if (m) {
@@ -293,12 +319,6 @@
           }
         }
       }
-    }
-
-    // H. URL fallback
-    if (!partnerId) {
-      const locMatch = window.location.href.match(/\/(?:messages|profile)\/(\d+)/);
-      if (locMatch) partnerId = Number(locMatch[1]);
     }
 
     return {
@@ -402,7 +422,7 @@
     return 'משתמש';
   }
 
-  // 5. Inject candidate link buttons (ONLY on feed & conversation list, NEVER inside sidebar or chat!)
+  // 6. Inject candidate link buttons (ONLY on feed & conversation list, NEVER inside sidebar or chat!)
   function injectCandidateLinkButtons() {
     const links = document.querySelectorAll('a[href*="/messages/"], a[href*="/profile/"]');
 
@@ -460,10 +480,12 @@
     });
   }
 
-  // 6. Update UI: Insert single prominent button into Turquoise Header ONLY
+  // 7. Update UI: Insert single button strictly into the Chat's Turquoise Header
   function updateUI() {
-    // Clean up any button that might have accidentally been placed in input area or footer
-    document.querySelectorAll('input ~ #stips-download-header-btn, textarea ~ #stips-download-header-btn, [class*="bottom"] #stips-download-header-btn, [class*="input"] #stips-download-header-btn, .stips-download-mini-btn').forEach((b) => b.remove());
+    // 1. Immediately clean up ANY button that appeared in the site main navbar, header, or input area
+    document.querySelectorAll(
+      'header #stips-download-header-btn, .site-header #stips-download-header-btn, app-header #stips-download-header-btn, nav #stips-download-header-btn, [class*="navbar"] #stips-download-header-btn, [class*="site-header"] #stips-download-header-btn, input ~ #stips-download-header-btn, textarea ~ #stips-download-header-btn, [class*="bottom"] #stips-download-header-btn, [class*="input"] #stips-download-header-btn, .stips-download-mini-btn'
+    ).forEach((b) => b.remove());
 
     const turquoiseHeader = findTurquoiseChatHeader();
     const existingBtn = document.getElementById('stips-download-header-btn');
@@ -486,7 +508,7 @@
         btn.id = 'stips-download-header-btn';
         btn.className = 'stips-download-chat-btn';
         btn.type = 'button';
-        btn.title = 'הורד שיחה זו לארכיון מקומי';
+        btn.title = `הורד שיחה זו לארכיון מקומי`;
         btn.innerHTML = `
           <span class="stips-dl-btn-icon">${DOWNLOAD_ICON_SVG}</span>
           <span class="stips-dl-btn-text">הורד שיחה</span>
@@ -511,12 +533,12 @@
           }
         });
 
-        // Insert inside turquoise header next to the 3-dots button
-        const threeDots = findThreeDotsInHeader(turquoiseHeader);
-        if (threeDots && threeDots.parentNode === turquoiseHeader) {
-          turquoiseHeader.insertBefore(btn, threeDots);
-        } else if (threeDots && threeDots.parentElement) {
-          threeDots.parentElement.insertBefore(btn, threeDots);
+        // Insert inside the turquoise header next to the 3-dots button
+        const actionChild = findTopChildForThreeDots(turquoiseHeader);
+        if (actionChild && actionChild.parentNode === turquoiseHeader) {
+          turquoiseHeader.insertBefore(btn, actionChild);
+        } else if (actionChild && actionChild.parentElement) {
+          actionChild.parentElement.insertBefore(btn, actionChild);
         } else {
           turquoiseHeader.prepend(btn);
         }
@@ -527,7 +549,7 @@
     injectCandidateLinkButtons();
   }
 
-  // 7. Shadow DOM Modal Infrastructure (Zero-Flicker Architecture & Pointer Protection)
+  // 8. Shadow DOM Modal Infrastructure (Zero-Flicker Architecture & Pointer Protection)
   function initShadowModal() {
     if (shadowRoot) return;
 
@@ -912,7 +934,7 @@
     modalContainer.style.display = 'flex';
   }
 
-  // 8. Core Download Execution
+  // 9. Core Download Execution
   async function startDownloadFlow(targetId, targetName) {
     currentPartnerId = Number(targetId);
     currentPartnerName = targetName || 'משתמש סטיפס';
@@ -1068,7 +1090,7 @@
     }
   }
 
-  // 9. Exports
+  // 10. Exports
   async function handleExportAction(format) {
     const messages = await getMessages(currentPartnerId);
     if (!messages || messages.length === 0) {
@@ -1125,7 +1147,7 @@
     window.open(blobUrl, '_blank');
   }
 
-  // 10. SPA Navigation Watcher and Mutation Observer
+  // 11. SPA Navigation Watcher and Mutation Observer
   const origPushState = history.pushState;
   const origReplaceState = history.replaceState;
 

@@ -11,6 +11,20 @@
   z-index: 9999999 !important;
 }
 
+/* STRICT RULE: NEVER show chat download button in site main navbar, header, or sidebar! */
+header .stips-download-chat-btn,
+.site-header .stips-download-chat-btn,
+app-header .stips-download-chat-btn,
+nav .stips-download-chat-btn,
+[class*="navbar"] .stips-download-chat-btn,
+[class*="site-header"] .stips-download-chat-btn,
+mat-sidenav .stips-download-chat-btn,
+mat-drawer .stips-download-chat-btn {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* Strictly hide any buttons that might somehow appear inside the sidebar/sidenav */
 mat-sidenav .stips-download-row-btn,
 mat-drawer .stips-download-row-btn,
@@ -79,32 +93,33 @@ aside .stips-download-row-btn {
   font-size: 11px !important;
 }
 
-/* Prominent, unmistakably clear Download Button inside Stips Chat Turquoise Header */
+/* Prominent, clean Download Button strictly inside the active Chat Turquoise Header */
 .stips-download-chat-btn {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 6px !important;
-  padding: 5px 14px !important;
-  background: rgba(255, 255, 255, 0.22) !important;
+  gap: 5px !important;
+  padding: 4px 12px !important;
+  background: rgba(255, 255, 255, 0.24) !important;
   color: #ffffff !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.7) !important;
-  border-radius: 20px !important;
-  font-size: 13px !important;
+  border: 1.2px solid rgba(255, 255, 255, 0.75) !important;
+  border-radius: 18px !important;
+  font-size: 12.5px !important;
   font-weight: 600 !important;
   font-family: inherit !important;
   cursor: pointer !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
   white-space: nowrap !important;
-  margin: 0 8px !important;
+  margin: 0 6px !important;
   line-height: 1 !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
   backdrop-filter: blur(4px) !important;
   vertical-align: middle !important;
   text-decoration: none !important;
   outline: none !important;
   flex-shrink: 0 !important;
-  z-index: 1000 !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
 }
 
 .stips-download-chat-btn:hover {
@@ -112,7 +127,7 @@ aside .stips-download-row-btn {
   color: #09c286 !important;
   border-color: #ffffff !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
 .stips-download-chat-btn .stips-dl-btn-icon {
@@ -122,14 +137,14 @@ aside .stips-download-row-btn {
 }
 
 .stips-download-chat-btn .stips-dl-btn-icon svg {
-  width: 15px !important;
-  height: 15px !important;
+  width: 14px !important;
+  height: 14px !important;
   stroke: currentColor !important;
 }
 
 .stips-download-chat-btn .stips-dl-btn-text {
   color: inherit !important;
   font-weight: 600 !important;
-  font-size: 13px !important;
-  letter-spacing: 0.2px !important;
+  font-size: 12px !important;
+  letter-spacing: 0.1px !important;
 }
