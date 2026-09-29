@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>סטיפס - לוח בקרה ומעקב חכם</title>
+  <meta name="description" content="לוח בקרה חכם למיפוי, ניתוח ומעקב אחר פעילות משתמשי אתר סטיפס (Stips).">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Rubik:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- CSS Styling -->
+  <style>
+    :root {
+      --bg-dark: #0d0f12;
+      --bg-card: rgba(22, 28, 36, 0.7);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #05cd86; /* Stips Neon Green */
+      --primary-glow: rgba(5, 205, 134, 0.35);
+      --accent: #7c3aed; /* Neon Purple */
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Rubik', 'Outfit', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(5, 205, 134, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.08) 0%, transparent 40%);
+    }
+
+    header {
+      background: rgba(13, 15, 18, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-card);
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #000;
+      font-size: 1.25rem;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(to left, #ffffff, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .crawler-pulse {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      border: 1px solid var(--border-card);
+    }
+
+    .pulse-dot {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      background-color: var(--text-muted);
+    }
+
+    .pulse-dot.running {
+      background-color: var(--primary);
+      box-shadow: 0 0 10px var(--primary);
+      animation: pulse 1.5s infinite;
+    }
+
+    .pulse-dot.stopped {
+      background-color: var(--danger);
+      box-shadow: 0 0 10px var(--danger);
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Grid layout for stats */
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--text-muted);
+    }
+
+    .stat-card.total::before { background: var(--primary); }
+    .stat-card.active::before { background: var(--accent); }
+    .stat-card.deleted::before { background: var(--danger); }
+    .stat-card.recovered::before { background: var(--warning); }
+
+    .stat-title {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Dashboard controls grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 1.25rem;
+      padding: 1.75rem;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-card);
+      padding-bottom: 0.75rem;
+    }
+
+    .form-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 1rem;
+    }
+
+    .input-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .input-field label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    input, select {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-card);
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 8px rgba(5, 205, 134, 0.2);
+    }
+
+    .btn-container {
+      display: flex;
+      gap: 1rem;
+    }
+
+    button {
+      flex: 1;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      border: none;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 15px rgba(5, 205, 134, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: var(--danger);
+      color: #000;
+      transform: translateY(-2px);
+    }
+
+    /* Live Progress bar */
+    .progress-wrapper {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      border: 1px solid var(--border-card);
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-muted);
+    }
+
+    .progress-bar-container {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(95deg, var(--primary), var(--accent));
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    /* Log viewer */
+    .log-viewer {
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      height: 160px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #a7f3d0; /* Soft emerald */
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      border: 1px solid var(--border-card);
+    }
+
+    /* Search Section Layout */
+    .search-section {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 1.5rem;
+      height: 600px;
+    }
+
+    @media (max-width: 768px) {
+      .search-section {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+
+    .search-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      height: 100%;
+    }
+
+    .search-bar-wrapper {
+      position: relative;
+    }
+
+    .search-bar-wrapper input {
+      width: 100%;
+      padding-left: 2.5rem;
+    }
+
+    .results-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding-right: 0.25rem;
+    }
+
+    .result-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-card);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .result-item:hover, .result-item.selected {
+      background: rgba(5, 205, 134, 0.08);
+      border-color: var(--primary);
+    }
+
+    .result-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .result-name {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .result-details {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .badge.active-badge {
+      background: rgba(5, 205, 134, 0.15);
+      color: var(--primary);
+    }
+
+    .badge.deleted-badge {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+    }
+
+    /* Detail pane layout */
+    .detail-pane {
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    .placeholder-detail {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      gap: 1rem;
+      text-align: center;
+    }
+
+    .user-profile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+    }
+
+    .user-avatar-title {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-avatar-circle {
+      width: 4rem;
+      height: 4rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #000;
+    }
+
+    .user-avatar-circle.is-deleted {
+      background: #374151;
+      color: var(--text-muted);
+    }
+
+    .profile-grid-info {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .profile-info-box {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-card);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .profile-info-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .profile-bio-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-card);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      white-space: pre-line;
+      line-height: 1.5;
+    }
+
+    /* Activity table/list */
+    .activity-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .activity-item {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-card);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: var(--transition);
+    }
+
+    .activity-item:hover {
+      border-color: var(--accent);
+      background: rgba(124, 58, 237, 0.05);
+    }
+
+    .activity-text-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+    }
+
+    .activity-badge {
+      display: inline-block;
+      width: fit-content;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .activity-badge.ask {
+      background: rgba(5, 205, 134, 0.15);
+      color: var(--primary);
+    }
+
+    .activity-badge.ans {
+      background: rgba(124, 58, 237, 0.15);
+      color: #a78bfa;
+    }
+
+    .activity-question-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .activity-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .btn-link {
+      background: transparent;
+      border: 1px solid var(--border-card);
+      color: var(--primary);
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.4rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .btn-link:hover {
+      background: var(--primary);
+      color: #000;
+      box-shadow: 0 0 10px rgba(5, 205, 134, 0.3);
+    }
+
+    /* Scrollbars customization */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <div class="logo-badge">ס</div>
+      <div>
+        <h1>סטיפס - לוח בקרה ומעקב חכם</h1>
+      </div>
+    </div>
+    <div class="crawler-pulse">
+      <span class="pulse-dot" id="status-dot"></span>
+      <span id="status-text" style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">טוען סטטוס...</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Stats Cards -->
+    <div class="stats-container">
+      <div class="stat-card total">
+        <span class="stat-title">סה"כ משתמשים במסד הנתונים</span>
+        <span class="stat-value" id="stats-total">0</span>
+      </div>
+      <div class="stat-card active">
+        <span class="stat-title">משתמשים פעילים</span>
+        <span class="stat-value" id="stats-active" style="color: var(--primary);">0</span>
+      </div>
+      <div class="stat-card deleted">
+        <span class="stat-title">חשבונות מחוקים שמופו</span>
+        <span class="stat-value" id="stats-deleted" style="color: var(--danger);">0</span>
+      </div>
+      <div class="stat-card recovered">
+        <span class="stat-title">שמות ששוחזרו למחוקים</span>
+        <span class="stat-value" id="stats-recovered" style="color: var(--warning);">0</span>
+      </div>
+    </div>
+
+    <!-- Dashboard Controls Grid -->
+    <div class="dashboard-grid">
+      <!-- Crawler Control Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>ניהול ובקרת הסורק</span>
+          <span id="current-id-badge" class="badge active-badge" style="font-family: monospace; display: none;">מזהה נוכחי: 0</span>
+        </div>
+        
+        <div class="form-group">
+          <div class="input-field">
+            <label for="start-id">מזהה התחלה</label>
+            <input type="number" id="start-id" placeholder="אוטומטי (נקודת עצירה)">
+          </div>
+          <div class="input-field">
+            <label for="end-id">מזהה סיום</label>
+            <input type="number" id="end-id" placeholder="עד הסוף">
+          </div>
+          <div class="input-field">
+            <label for="delay-ms">השהיה (במילישניות)</label>
+            <input type="number" id="delay-ms" value="450" min="0">
+          </div>
+          <div class="input-field">
+            <label for="concurrency">עובדים במקביל (Concurrency)</label>
+            <input type="number" id="concurrency" value="15" min="1" max="100">
+          </div>
+        </div>
+
+        <div class="btn-container">
+          <button id="btn-start" class="btn-primary" onclick="startCrawler()">הפעל סורק</button>
+          <button id="btn-stop" class="btn-danger" onclick="stopCrawler()" disabled>עצור סורק</button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-wrapper">
+          <div class="progress-info">
+            <span id="progress-text">ממתין להרצה...</span>
+            <span id="progress-percentage">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-bar-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Crawler Logs Card -->
+      <div class="card">
+        <div class="card-title">הודעות מערכת ולוגים (בזמן אמת)</div>
+        <div class="log-viewer" id="log-viewer">
+          <div>[מערכת] ממתין למידע לוגים מהסורק...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Section Grid -->
+    <div class="search-section">
+      <!-- Sidebar Search -->
+      <div class="card search-sidebar">
+        <div class="card-title">חיפוש ומיפוי משתמשים</div>
+        
+        <div class="search-bar-wrapper">
+          <input type="text" id="search-input" placeholder="חפש לפי שם או מזהה..." oninput="performSearch()">
+        </div>
+
+        <div class="input-field">
+          <select id="filter-type" onchange="performSearch()">
+            <option value="all">כל המשתמשים</option>
+            <option value="active">פעילים בלבד</option>
+            <option value="deleted">מחוקים בלבד</option>
+          </select>
+        </div>
+
+        <div class="results-list" id="results-list">
+          <div class="placeholder-detail">הקלד בתיבת החיפוש כדי לראות תוצאות...</div>
+        </div>
+      </div>
+
+      <!-- User details container -->
+      <div class="card detail-pane" id="detail-pane">
+        <div class="placeholder-detail">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-muted);">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+          <p>בחר משתמש מהרשימה כדי לצפות בפרופיל המלא שלו ובפעילות שביצע באתר.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let statusInterval = null;
+    let selectedUserId = null;
+
+    // Fetch stats on page load
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        document.getElementById('stats-total').innerText = data.total.toLocaleString();
+        document.getElementById('stats-active').innerText = data.active.toLocaleString();
+        document.getElementById('stats-deleted').innerText = data.deleted.toLocaleString();
+        document.getElementById('stats-recovered').innerText = data.deletedWithNames.toLocaleString();
+      } catch (e) {
+        console.error('Error fetching statistics:', e);
+      }
+    }
+
+    // Refresh crawler status
+    async function updateCrawlerStatus() {
+      try {
+        const res = await fetch('/api/crawler/status');
+        const data = await res.json();
+
+        const dot = document.getElementById('status-dot');
+        const text = document.getElementById('status-text');
+        const startBtn = document.getElementById('btn-start');
+        const stopBtn = document.getElementById('btn-stop');
+        const currentBadge = document.getElementById('current-id-badge');
+
+        if (data.status === 'running') {
+          dot.className = 'pulse-dot running';
+          text.innerText = 'סורק פעיל כעת';
+          text.style.color = 'var(--primary)';
+          startBtn.disabled = true;
+          stopBtn.disabled = false;
+          
+          currentBadge.style.display = 'inline-block';
+          currentBadge.innerText = `מזהה נוכחי: ${data.currentId}`;
+        } else {
+          dot.className = 'pulse-dot stopped';
+          text.innerText = data.status === 'idle' ? 'סורק סיים / ממתין' : 'סורק כבוי';
+          text.style.color = 'var(--text-muted)';
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          currentBadge.style.display = 'none';
+        }
+
+        // Logs update
+        const logViewer = document.getElementById('log-viewer');
+        if (data.logs && data.logs.length > 0) {
+          logViewer.innerHTML = data.logs.map(line => `<div>${line}</div>`).join('');
+          logViewer.scrollTop = logViewer.scrollHeight;
+        }
+
+        // Progress bar update
+        if (data.status === 'running' && data.params && data.params.start && data.params.end) {
+          const start = parseInt(data.params.start, 10);
+          const end = parseInt(data.params.end, 10);
+          const current = data.currentId;
+          const range = end - start;
+          if (range > 0) {
+            const percent = Math.min(100, Math.max(0, Math.floor(((current - start) / range) * 100)));
+            document.getElementById('progress-bar-fill').style.width = percent + '%';
+            document.getElementById('progress-percentage').innerText = percent + '%';
+            document.getElementById('progress-text').innerText = `סורק מזהה ${current} מתוך ${end}...`;
+          }
+        } else if (data.status === 'running') {
+          document.getElementById('progress-bar-fill').style.width = '100%';
+          document.getElementById('progress-percentage').innerText = 'רץ';
+          document.getElementById('progress-text').innerText = `סורק מזהה ${data.currentId} (ריצה ללא הגבלת סיום)...`;
+        } else {
+          document.getElementById('progress-bar-fill').style.width = '0%';
+          document.getElementById('progress-percentage').innerText = '0%';
+          document.getElementById('progress-text').innerText = 'סורק כבוי או ממתין.';
+        }
+
+        // Reload stats if crawler is running
+        if (data.status === 'running') {
+          loadStats();
+        }
+
+      } catch (e) {
+        console.error('Error fetching crawler status:', e);
+      }
+    }
+
+    // Start crawler
+    async function startCrawler() {
+      const start = document.getElementById('start-id').value;
+      const end = document.getElementById('end-id').value;
+      const delay = document.getElementById('delay-ms').value;
+      const concurrency = document.getElementById('concurrency').value;
+
+      const body = {
+        delay: !isNaN(parseInt(delay, 10)) ? parseInt(delay, 10) : 450,
+        concurrency: parseInt(concurrency, 10) || 15
+      };
+      if (start) body.start = parseInt(start, 10);
+      if (end) body.end = parseInt(end, 10);
+
+      try {
+        const res = await fetch('/api/crawler/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          updateCrawlerStatus();
+        } else {
+          alert('שגיאה בהפעלת הסורק: ' + data.error);
+        }
+      } catch (e) {
+        alert('שגיאה בתקשורת עם השרת.');
+      }
+    }
+
+    // Stop crawler
+    async function stopCrawler() {
+      try {
+        const res = await fetch('/api/crawler/stop', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          updateCrawlerStatus();
+        } else {
+          alert('שגיאה בעצירת הסורק: ' + data.error);
+        }
+      } catch (e) {
+        alert('שגיאה בתקשורת עם השרת.');
+      }
+    }
+
+    // Search users
+    async function performSearch() {
+      const q = document.getElementById('search-input').value;
+      const type = document.getElementById('filter-type').value;
+      const resultsList = document.getElementById('results-list');
+
+      if (!q && type === 'all') {
+        resultsList.innerHTML = '<div class="placeholder-detail">הקלד בתיבת החיפוש כדי לראות תוצאות...</div>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=${type}`);
+        const users = await res.json();
+
+        if (users.length === 0) {
+          resultsList.innerHTML = '<div class="placeholder-detail">לא נמצאו משתמשים תואמים.</div>';
+          return;
+        }
+
+        resultsList.innerHTML = users.map(user => {
+          const badgeClass = user.active ? 'active-badge' : 'deleted-badge';
+          const badgeText = user.active ? 'פעיל' : (user.nickname ? 'מחוק (עם שם)' : 'מחוק');
+          const isSelected = user.id === selectedUserId ? 'selected' : '';
+          
+          return `
+            <div class="result-item ${isSelected}" onclick="showUserProfile(${user.id}, this)">
+              <div class="result-info">
+                <span class="result-name">${user.nickname || `משתמש ללא שם (ID: ${user.id})`}</span>
+                <span class="result-details">מזהה: ${user.id} | נקודות: ${user.points !== null ? user.points : 'N/A'}</span>
+              </div>
+              <span class="badge ${badgeClass}">${badgeText}</span>
+            </div>
+          `;
+        }).join('');
+
+      } catch (e) {
+        console.error('Error searching:', e);
+      }
+    }
+
+    // Show user profile details
+    async function showUserProfile(id, element) {
+      selectedUserId = id;
+      
+      // Highlight selected result item
+      document.querySelectorAll('.result-item').forEach(el => el.classList.remove('selected'));
+      if (element) element.classList.add('selected');
+
+      const detailPane = document.getElementById('detail-pane');
+      detailPane.innerHTML = '<div class="placeholder-detail">טוען נתוני פרופיל...</div>';
+
+      try {
+        // Fetch user basic profile
+        const userRes = await fetch(`/api/user/${id}`);
+        const user = await userRes.json();
+
+        // Fetch activity
+        const actRes = await fetch(`/api/user/${id}/activity`);
+        const activities = await actRes.json();
+
+        const isDeleted = !user.active;
+        const genderText = user.gender === 1 ? 'זכר' : (user.gender === 2 ? 'נקבה' : 'לא מוגדר');
+        
+        let activityHtml = '';
+        if (activities.length === 0) {
+          activityHtml = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem; line-height: 1.6;">הפעילות הציבורית (שאלות/תשובות) אינה ניתנת לשאיבה מזהה משתמש באופן אנונימי מטעמי פרטיות ואנונימיות בסטיפס (ה-API של סטיפס מחזיר במקרה זה את הפיד הגלובלי הכללי).<br>מנגנון המיפוי הישיר בוטל כדי למנוע קישורים שגויים.</div>';
+        } else {
+          activityHtml = `
+            <div class="activity-list">
+              ${activities.map(act => {
+                const badgeClass = act.type === 'ask' ? 'ask' : 'ans';
+                const badgeText = act.type === 'ask' ? 'שאל שאלה' : 'ענה תשובה';
+                return `
+                  <div class="activity-item">
+                    <div class="activity-text-info">
+                      <span class="activity-badge ${badgeClass}">${badgeText}</span>
+                      <span class="activity-question-title">${act.title}</span>
+                      <span class="activity-time">${act.time}</span>
+                    </div>
+                    <a href="https://stips.co.il/${act.url || `ask/${act.itemid}`}" target="_blank" class="btn-link">צפה בשאלה</a>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }
+
+        detailPane.innerHTML = `
+          <div class="user-profile-header">
+            <div class="user-avatar-title">
+              <div class="user-avatar-circle ${isDeleted ? 'is-deleted' : ''}">
+                ${(user.nickname || '?').charAt(0)}
+              </div>
+              <div>
+                <h2>${user.nickname || `מזהה משתמש ${user.id}`}</h2>
+                <p style="color: var(--text-muted); font-size: 0.875rem;">מזהה פנימי: ${user.id} | סטטוס: ${user.active ? '<span style="color: var(--primary); font-weight: 600;">פעיל</span>' : '<span style="color: var(--danger); font-weight: 600;">נמחק/לא פעיל</span>'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-grid-info">
+            <div class="profile-info-box">
+              <div class="stat-title">נקודות אמינות</div>
+              <div class="profile-info-val">${user.points !== null ? user.points : 'N/A'}</div>
+            </div>
+            <div class="profile-info-box">
+              <div class="stat-title">פרחים</div>
+              <div class="profile-info-val">${user.flowers_count !== null ? user.flowers_count : 'N/A'}</div>
+            </div>
+            <div class="profile-info-box">
+              <div class="stat-title">גיל ומגדר</div>
+              <div class="profile-info-val" style="font-size: 0.95rem; font-weight: 600; padding-top: 0.25rem;">
+                ${user.age ? `בן ${user.age}` : 'גיל לא צוין'}<br>${genderText}
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-grid-info" style="grid-template-columns: 1fr 1fr;">
+            <div class="profile-info-box" style="text-align: right;">
+              <div class="stat-title">פעילויות באתר</div>
+              <div style="font-size: 0.9rem; margin-top: 0.25rem;">
+                סה"כ שאלות שפרסם: <strong>${user.questions_count !== null ? user.questions_count : 'N/A'}</strong><br>
+                סה"כ תשובות שכתב: <strong>${user.answers_count !== null ? user.answers_count : 'N/A'}</strong>
+              </div>
+            </div>
+            <div class="profile-info-box" style="text-align: right;">
+              <div class="stat-title">וותק והצטרפות</div>
+              <div style="font-size: 0.9rem; margin-top: 0.25rem;">
+                פעיל באתר מאז: <strong>${user.active_since || 'N/A'}</strong><br>
+                חסום לצמיתות: <strong>${user.permanently_blocked ? 'כן' : 'לא'}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-title" style="margin-bottom: 0.5rem;">סטטוס אישי (Bio / אודות)</div>
+          <div class="profile-bio-box">
+            ${user.bio_text || 'אין סטטוס אישי מוגדר.'}
+            ${user.bio_text_modified ? `<div style="font-size: 0.75rem; color: var(--text-muted); text-align: left; margin-top: 0.75rem;">עודכן לאחרונה: ${user.bio_text_modified}</div>` : ''}
+          </div>
+
+          <div class="activity-title">
+            <span>פעילות ממופה (שאלות ותשובות)</span>
+            <span class="badge active-badge" style="font-size: 0.8rem;">${activities.length} אירועים</span>
+          </div>
+          ${activityHtml}
+        `;
+
+      } catch (e) {
+        console.error('Error fetching user profile details:', e);
+        detailPane.innerHTML = '<div class="placeholder-detail" style="color: var(--danger);">שגיאה בטעינת נתוני משתמש.</div>';
+      }
+    }
+
+    // Initial setup
+    loadStats();
+    updateCrawlerStatus();
+    
+    // Poll updates every 1.5 seconds
+    statusInterval = setInterval(updateCrawlerStatus, 1500);
+
+  </script>
+</body>
+</html>

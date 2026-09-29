@@ -1,0 +1,81 @@
+================================================================================
+Stips Download - פרטי רישום לחנות Chrome Web Store
+================================================================================
+
+שם הפריט (Title):
+Stips Download
+
+תיאור קצר (Short Description - עד 132 תווים):
+הורדת שיחות Stips לארכיון פרטי, מהיר ונוח לחיפוש עם תאריכים עבריים ולועזיים.
+
+English Short Description:
+Download and archive your Stips conversations locally with full dates, instant search and offline viewing.
+
+קטגוריה (Category):
+Social & Communication / Productivity
+
+שפה ראשית (Language):
+עברית (Hebrew)
+
+--------------------------------------------------------------------------------
+תיאור מפורט לחנות (Store Description):
+--------------------------------------------------------------------------------
+Stips Download - הורדת שיחות סטיפס לארכיון מקומי, עשיר ונוח לחיפוש!
+
+רוצים לגבות שיחה חשובה מסטיפס? צריכים למצוא הודעה שנשלחה לפני שנתיים? 
+עם "Stips Download" תוכלו להוריד ולשמור את כל היסטוריית השיחות שלכם בסטיפס בקליק אחד, ולצפות בהן בכל זמן – גם ללא חיבור לאינטרנט!
+
+🌟 התכונות המרכזיות:
+
+• זיהוי שיחה אוטומטי:
+  גולשים בסטיפס? התוסף מזהה אוטומטית אם אתם בתוך עמוד הודעות או צ'אט ומציג כפתור הורדה דיסקרטי ונוח ליד כותרת השיחה.
+
+• הורדה ישירה דרך ה-API הרשמי:
+  ללא צורך בגלילה פיזית ידנית של המסך! התוסף מושך את השיחה ישירות בצורה חלקה, עמידה ומהירה.
+
+• עמידות מלאה לניתוקי אינטרנט (Checkpoint & Resume):
+  השיחה שלכם כוללת אלפי הודעות והאינטרנט התנתק? אין בעיה! התוסף שומר כל אצווה מקומית ב-IndexedDB וממשיך בדיוק מהנקודה שבה עצרתם.
+
+• ארכיון HTML עצמאי ומהיר (Offline Single File):
+  השיחה מיוצאת לקובץ HTML עצמאי ויפהפה הפועל במחשב ללא שום תלות בשרת, ללא ספריות חיצוניות וללא חיבור לרשת.
+  הארכיון כולל מצב כהה/בהיר, וירטואליזציה (מציג בצורה חלקה גם שיחות של מעל 20,000 הודעות!), ומפרידי תאריכים אלגנטיים בסגנון טלגרם.
+
+• תאריכים עבריים ולועזיים מלאים:
+  כולל יום, חודש, שנה, שעה מדויקת, ותאריך עברי באותיות (כגון: י"ב באדר תשפ"ו) ללא שגיאות 1970.
+
+• לוח שנה אינטראקטיבי:
+  קפיצה ישירה להודעות לפי תאריכים נבחרים (בלוח לועזי או עברי). רק ימים שבהם נשלחו הודעות מודגשים וזמינים לקליק.
+
+• חיפוש סופר-מהיר בזיכרון (In-Memory Search):
+  מנוע חיפוש מתקדם שמאתר מילים, תת-מחרוזות, ואף מתמודד עם שגיאות הקלדה קלות (Fuzzy Typo Tolerance). לחיצה על תוצאה מקפיצה ישירות להודעה המבוקשת.
+
+• יצוא במגוון פורמטים:
+  ייצאו את השיחה בקלות גם לפורמט JSON מובנה או קובץ TXT קריא ומסודר.
+
+🔒 פרטיות מעל הכל:
+כל הנתונים נשמרים ומעובדים אך ורק במחשב האישי שלכם בדפדפן! התוסף אינו שולח שום מידע, הודעה או פרט מזהה לשרת חיצוני כלשהו.
+
+--------------------------------------------------------------------------------
+הצהרות פרטיות והצדקת הרשאות (Privacy & Permissions Justification):
+--------------------------------------------------------------------------------
+
+Single Purpose:
+"To allow users of stips.co.il to download, backup, and view their personal chat message history locally in a self-contained offline archive."
+
+Permission Justification:
+1. storage:
+   "Used to save user preferences, theme selection (dark/light), and local download checkpoint jobs in IndexedDB so large chat history downloads can be resumed if disconnected."
+
+2. downloads:
+   "Used to save the generated offline HTML archive, JSON, or TXT file directly to the user's local downloads folder upon clicking export."
+
+3. scripting:
+   "Used to trigger the download flow on the active Stips tab when initiated from the extension action popup."
+
+Host Permissions (https://stips.co.il/*):
+   "Required to detect chat conversation pages on stips.co.il and fetch the user's authorized chat messages directly from the Stips API using the user's existing authenticated session."
+
+Data Usage:
+- No data is collected or transmitted outside the user's browser.
+- No remote analytics or third-party servers.
+- All storage is strictly client-side.

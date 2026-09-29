@@ -1,0 +1,13 @@
+{
+  "name": "understand-stips",
+  "version": "1.0.0",
+  "description": "Stips crawler and web dashboard project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "crawler": "node stips_crawler.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

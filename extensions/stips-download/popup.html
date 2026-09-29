@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stips Download</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <div class="brand">
+        <img src="icons/icon32.png" alt="Stips Download" class="logo">
+        <div class="brand-text">
+          <h2>Stips Download</h2>
+          <span>הורדת שיחות מקומית ובטוחה</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="popup-content">
+      <!-- Active Context Card -->
+      <section class="card active-chat-card" id="chat-context-section">
+        <div class="card-status-dot" id="context-dot"></div>
+        <div class="card-content">
+          <h3 id="context-title">בודק עמוד נוכחי...</h3>
+          <p id="context-desc">סורק אחר שיחות פעילות בסטיפס</p>
+        </div>
+        <div class="card-actions" id="context-actions" style="display: none;">
+          <button class="btn btn-primary" id="btn-popup-download">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            הורד שיחה
+          </button>
+        </div>
+      </section>
+
+      <!-- Saved Archives Section -->
+      <section class="saved-section">
+        <div class="section-header">
+          <h4>ארכיונים מקומיים שמורים</h4>
+          <span class="count-badge" id="saved-count">0</span>
+        </div>
+        <div class="saved-list" id="saved-list">
+          <div class="empty-list">אין שיחות שמורות במאגר המקומי.</div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="popup-footer">
+      <span>100% מקומי ופרטי &bull; ללא שרתים חיצוניים</span>
+    </footer>
+  </div>
+
+  <script src="core/date_utils.js"></script>
+  <script src="core/storage.js"></script>
+  <script src="core/archive_template.js"></script>
+  <script src="core/exporter.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

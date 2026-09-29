@@ -1,0 +1,55 @@
+{
+  "manifest_version": 3,
+  "name": "Stips Notifie",
+  "version": "12.1",
+  "description": "התראות פוש חכמות ועדכוני ספירה בזמן אמת לסטיפס.",
+  "permissions": [
+    "storage",
+    "scripting",
+    "tabs",
+    "notifications",
+    "alarms",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://stips.co.il/*",
+    "*://*.stips.co.il/*",
+    "http://localhost:8085/*",
+    "http://127.0.0.1:8085/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "stips_headers",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://stips.co.il/*",
+        "*://*.stips.co.il/*"
+      ],
+      "js": [
+        "content-script.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_title": "Stips Enhancer Settings",
+    "default_icon": {
+      "48": "icon48.png"
+    },
+    "default_popup": "options.html"
+  },
+  "icons": {
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

@@ -1,0 +1,32 @@
+[
+    {
+        "id": 1,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "Referer",
+                    "operation": "set",
+                    "value": "https://stips.co.il/"
+                },
+                {
+                    "header": "X-Requested-With",
+                    "operation": "set",
+                    "value": "XMLHttpRequest"
+                },
+                {
+                    "header": "Accept",
+                    "operation": "set",
+                    "value": "application/json, text/plain, */*"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "stips.co.il/api*",
+            "resourceTypes": [
+                "xmlhttprequest"
+            ]
+        }
+    }
+]

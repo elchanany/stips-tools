@@ -1,0 +1,17 @@
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.cache/
+.vscode/
+.idea/
+*.db
+*.sqlite
+stips_data.db
+graphify-out/
+.codex/
+pdf_images/
+
+main_stips_real.js
+*.bundle.js

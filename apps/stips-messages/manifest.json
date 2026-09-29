@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Understand Stips",
+  "version": "1.0",
+  "description": "הרחבה שנועדה לחקור את מנגנון ההרשאות של הנאמנים באתר סטיפס",
+  "permissions": [],
+  "content_scripts": [
+    {
+      "matches": ["*://stips.co.il/*"],
+      "js": ["main_world_inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}

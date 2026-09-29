@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>⚙️ הגדרות Stips Enhancer</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="options.css">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="header-area">
+        <h1>הגדרות ⚙️</h1>
+    </div>
+
+    <!-- ✅ דשבורד קומפקטי -->
+    <div class="stats-dashboard section-group compact-dashboard">
+        <div id="authStatus" class="auth-status auth-loading">⏳ בודק חיבור...</div>
+        <div class="stats-container">
+            <div class="stat-item"><span class="stat-label">💬 הודעות:</span><span id="statChatCount" class="stat-value">-</span></div>
+            <div class="stat-item"><span class="stat-label">🔔 התראות:</span><span id="statAlertCount" class="stat-value">-</span></div>
+        </div>
+    </div>
+
+    <!-- ✅ הגדרה מרכזית: התראות ברקע (עלה למעלה, מודגש) -->
+    <div class="main-section-group highlight-group">
+        <div class="section-header">
+            <h2>🎯 הגדרה מרכזית</h2>
+        </div>
+        
+        <div class="setting-item column-layout large-item">
+            <div class="setting-header-row">
+                <label for="enableBackgroundCheck" class="primary-label large-label">קבלת התראות גם כשסטיפס סגור</label>
+                <div class="toggle-switch large-toggle">
+                    <input type="checkbox" id="enableBackgroundCheck" hidden>
+                    <label for="enableBackgroundCheck" class="slider"></label>
+                </div>
+            </div>
+            <div class="setting-description">
+                התוסף יבדוק על הודעות חדשות ברקע כל הזמן.
+            </div>
+            <div class="warning-alert" id="privacyWarning">
+                <strong>אזהרה:</strong> הפעלה תשמור אותך על סטטוס <b>"מחובר"</b> באתר.
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ הגדרות בסיסיות -->
+    <div class="main-section-group">
+        <div class="section-header">
+            <h2>🔔 הגדרות בסיסיות</h2>
+        </div>
+
+        <div class="setting-item">
+            <label for="enablePushNotifications">הפעל התראות פוש (מומלץ)</label>
+            <div class="toggle-switch">
+                <input type="checkbox" id="enablePushNotifications" hidden>
+                <label for="enablePushNotifications" class="slider"></label>
+            </div>
+        </div>
+
+        <div class="setting-item child-setting">
+            <label for="enableChatMessages">כלול הודעות צ'אט (משתמשים)</label>
+            <div class="toggle-switch">
+                <input type="checkbox" id="enableChatMessages" hidden>
+                <label for="enableChatMessages" class="slider"></label>
+            </div>
+        </div>
+
+        <div class="setting-item child-setting">
+            <label for="enableSystemMessages">כלול התראות כלליות</label>
+            <div class="toggle-switch">
+                <input type="checkbox" id="enableSystemMessages" hidden>
+                <label for="enableSystemMessages" class="slider"></label>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ הגדרות מתקדמות -->
+    <div class="main-section-group advanced-group">
+        <div class="section-header">
+            <h2>⚙️ הגדרות מתקדמות</h2>
+        </div>
+
+        <div class="setting-item">
+            <label for="disableNotificationsWhenActive">השתק כשאני נמצא בתוך כרטיסיית סטיפס</label>
+            <div class="toggle-switch">
+                <input type="checkbox" id="disableNotificationsWhenActive" hidden>
+                <label for="disableNotificationsWhenActive" class="slider"></label>
+            </div>
+        </div>
+        
+        <div class="setting-item interval-setting column-layout">
+            <div class="setting-header-row">
+                <label for="checkIntervalSlider">כל כמה זמן תהיה בדיקה:</label>
+                <span id="intervalDisplay" class="interval-display">⏱️ עולה נתונים...</span>
+            </div>
+            <div class="range-slider-container">
+                <input type="range" id="checkIntervalSlider" min="0" max="14" step="1" value="1" class="modern-range">
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ סטטוס שמירה אוטומטית -->
+    <div class="action-buttons">
+        <div id="status" class="status-message"></div>
+    </div>
+
+    <!-- ✅ קרדיט יוצר -->
+    <div class="creator-footer">
+        נוצר על ידי 
+        <a href="#" id="creatorLink" class="creator-link">"אין משמעות"</a>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+
+</html>

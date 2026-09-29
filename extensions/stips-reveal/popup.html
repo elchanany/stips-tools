@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+  <title>Stips Reveal</title>
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="logo-row">
+        <span class="logo-icon">🔍</span>
+        <span class="logo-text">Stips Reveal</span>
+      </div>
+      <div class="header-right">
+        <span class="help-btn" id="helpBtn" title="מדריך למשתמש">❓</span>
+        <span class="version">v1.3</span>
+      </div>
+    </div>
+
+    <!-- Main toggle -->
+    <div class="setting-row main-toggle">
+      <label for="enabled">תוסף פעיל</label>
+      <label class="switch">
+        <input type="checkbox" id="enabled" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <hr class="divider">
+
+    <!-- INLINE BADGES SECTION -->
+    <div class="setting-section">
+      <div class="section-title">תגיות ליד השם (Inline)</div>
+      
+      <div class="radio-group" style="margin-bottom: 12px;">
+        <label class="radio-option">
+          <input type="radio" name="displayMode" value="both" checked>
+          <span class="radio-custom"></span>
+          <span>מגדר + גיל</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="displayMode" value="age">
+          <span class="radio-custom"></span>
+          <span>גיל בלבד</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="displayMode" value="gender">
+          <span class="radio-custom"></span>
+          <span>מגדר בלבד</span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="toggle-label-row"><span class="toggle-icon">🏆</span><label for="inlineScore">דירוג אמינות</label></div>
+        <label class="switch switch-sm"><input type="checkbox" id="inlineScore"><span class="slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-label-row"><span class="toggle-icon">❓</span><label for="inlineQuestions">שאלות</label></div>
+        <label class="switch switch-sm"><input type="checkbox" id="inlineQuestions"><span class="slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-label-row"><span class="toggle-icon">💬</span><label for="inlineAnswers">תשובות</label></div>
+        <label class="switch switch-sm"><input type="checkbox" id="inlineAnswers"><span class="slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-label-row"><span class="toggle-icon">🌸</span><label for="inlineFlowers">פרחים</label></div>
+        <label class="switch switch-sm"><input type="checkbox" id="inlineFlowers"><span class="slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-label-row"><span class="toggle-icon">⏱️</span><label for="inlineActiveSince">זמן פעילות</label></div>
+        <label class="switch switch-sm"><input type="checkbox" id="inlineActiveSince"><span class="slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-label-row"><span class="toggle-icon">🛡️</span><label for="inlineNeeman">נאמן/ת סטיפס</label></div>
+        <label class="switch switch-sm"><input type="checkbox" id="inlineNeeman" checked><span class="slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-label-row"><span class="toggle-icon">❌</span><label for="inlineMarked">איקס אדום (מסומן)</label></div>
+        <label class="switch switch-sm"><input type="checkbox" id="inlineMarked" checked><span class="slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <div class="toggle-label-row"><span class="toggle-icon">🚫</span><label for="inlineBlocked">חסמתי אותו (אוטומטי)</label></div>
+        <label class="switch switch-sm"><input type="checkbox" id="inlineBlocked" checked><span class="slider"></span></label>
+      </div>
+
+      <!-- Badge size -->
+      <div class="size-control" style="margin-top: 10px;">
+        <span class="size-label size-small">א</span>
+        <input type="range" id="badgeSize" min="8" max="16" value="11" step="1">
+        <span class="size-label size-large">א</span>
+      </div>
+      <div class="size-value" id="sizeValue">11px</div>
+    </div>
+
+    <!-- Advanced settings toggle -->
+    <div class="advanced-toggle" id="advancedToggle">
+      <span>הגדרות מתקדמות (חלונית ריחוף ועיצוב)</span>
+      <span class="arrow" id="advancedArrow">◀</span>
+    </div>
+
+    <!-- Advanced settings panel -->
+    <div class="advanced-panel" id="advancedPanel">
+      
+      <hr class="divider">
+
+      <!-- TOOLTIP SECTION -->
+      <div class="setting-section">
+        <div class="section-title" title="מופיע כשמעבירים עכבר על השם או התמונה">חלונית ריחוף צפה (Tooltip)</div>
+        
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">💡</span><label for="tooltipEnabled">הפעל חלונית ריחוף</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipEnabled" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">🎂</span><label for="tooltipAgeGender">גיל ומגדר</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipAgeGender" checked><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">🏆</span><label for="tooltipScore">דירוג אמינות</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipScore"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">❓</span><label for="tooltipQuestions">שאלות</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipQuestions"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">💬</span><label for="tooltipAnswers">תשובות</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipAnswers"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">🌸</span><label for="tooltipFlowers">פרחים</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipFlowers"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">⏱️</span><label for="tooltipActiveSince">זמן פעילות</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipActiveSince"><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">🛡️</span><label for="tooltipNeeman">נאמן/ת סטיפס</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipNeeman" checked><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">✏️</span><label for="tooltipBio">ביו (סטטוס אישי)</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="tooltipBio" checked><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Custom colors -->
+      <div class="color-setting">
+        <label>צבע בן (זכר)</label>
+        <div class="color-row">
+          <input type="color" id="maleColor" value="#1565c0">
+          <input type="color" id="maleBg" value="#e3f2fd">
+          <span class="color-hint">טקסט / רקע</span>
+        </div>
+      </div>
+      <div class="color-setting">
+        <label>צבע בת (נקבה)</label>
+        <div class="color-row">
+          <input type="color" id="femaleColor" value="#c2185b">
+          <input type="color" id="femaleBg" value="#fce4ec">
+          <span class="color-hint">טקסט / רקע</span>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Custom text -->
+      <div class="color-setting">
+        <label>כיתוב מותאם (למגדר)</label>
+        <div class="text-row">
+          <input type="text" id="maleText" placeholder="בן" maxlength="10" class="text-input">
+          <span class="text-hint">זכר</span>
+        </div>
+        <div class="text-row">
+          <input type="text" id="femaleText" placeholder="בת" maxlength="10" class="text-input">
+          <span class="text-hint">נקבה</span>
+        </div>
+      </div>
+      <hr class="divider">
+
+      <!-- Cache frequency -->
+      <div class="setting-section">
+        <div class="section-title">זמן שמירת נתונים בזיכרון (קאש)</div>
+        <div class="setting-row">
+          <label for="cacheTtlSelect" style="font-size: 13px;">רענן אוטומטית רק כל:</label>
+          <select id="cacheTtlSelect" class="stips-select" title="זמנים ארוכים משמרים תעבורה, זמנים קצרים מחזירים עדכונים טריים">
+            <option value="1">1 שעה (⚠️ סכנת חסימה!)</option>
+            <option value="12">12 שעות</option>
+            <option value="24">24 שעות (יום 1)</option>
+            <option value="48">48 שעות (יומיים - מומלץ)</option>
+            <option value="168">שבוע</option>
+          </select>
+        </div>
+      </div>
+      <hr class="divider">
+
+      <!-- Page visibility -->
+      <div class="setting-section">
+        <div class="section-title">הצג תגיות בעמודים</div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">🏠</span><label for="pageHome">עמוד הבית</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="pageHome" checked><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">✏️</span><label for="pagePenFriends">חברים לעט</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="pagePenFriends" checked><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">💬</span><label for="pageChat">צ'אטים</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="pageChat" checked><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">❓</span><label for="pageQuestion">עמוד שאלה</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="pageQuestion" checked><span class="slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-label-row"><span class="toggle-icon">🌐</span><label for="pageOther">שאר העמודים</label></div>
+          <label class="switch switch-sm"><input type="checkbox" id="pageOther" checked><span class="slider"></span></label>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Help Modal -->
+    <div class="help-modal" id="helpModal">
+      <div class="help-modal-content">
+        <div class="help-modal-header">
+          <span class="help-modal-title">מדריך לחסמתי ופיצ'רים</span>
+          <span class="help-modal-close" id="helpClose">&times;</span>
+        </div>
+        <div class="help-modal-body">
+          <p><strong>תגיות ליד השם (Inline):</strong> מציגות מידע קבוע ליד שם המשתמש באתר. ניתן לבחור איזה מידע להציג (גיל, מגדר, שאלות ועוד).</p>
+          <p><strong>חלונית ריחוף צפה (Tooltip):</strong> בעת העברת העכבר מעל שם משתמש, תופיע חלונית עם כלל הפרטים שלו כולל הביו.</p>
+          <p><strong>סימון משתמשים (ידני):</strong> לחצו <strong>לחיצה כפולה (Double-Click)</strong> על תגית הגיל/מגדר של משתמש כדי לסמן אותו באיקס אדום (❌ מסומן). לחצו שוב לחיצה כפולה כדי להסיר. מעולה כדי לסמן לעצמכם טרולים.</p>
+          <p><strong>חסימת משתמשים (אוטומטי):</strong> התוסף מזהה אוטומטית משתמשים שאתם חסמתם, ומציג ליידם תגית ״חסמתי״ בולטת.</p>
+          <p><strong>עיצוב מתקדם:</strong> תוכלו לשנות צבעים ורקעים לכל תגית תחת 'הגדרות מתקדמות'.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset -->
+    <button class="reset-btn" id="resetBtn">איפוס להגדרות ברירת מחדל</button>
+  </div>
+
+  <!-- Credit (Sticky footer) -->
+  <div class="creator-credit">
+    נוצר על ידי <a href="https://stips.co.il/profile/429329" target="_blank" class="credit-link">אין משמעות</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

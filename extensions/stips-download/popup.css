@@ -1,0 +1,240 @@
+/* Stips Download - Popup Styles */
+
+:root {
+  --primary: #009688;
+  --primary-hover: #00796b;
+  --accent-red: #c9372f;
+  --bg-app: #f8f9fa;
+  --bg-card: #ffffff;
+  --text-main: #212529;
+  --text-muted: #6c757d;
+  --border: #e9ecef;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 340px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  direction: rtl;
+  user-select: none;
+}
+
+.popup-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.popup-header {
+  padding: 12px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
+}
+
+.brand-text h2 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.brand-text span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.popup-content {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.active-chat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.card-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffc107;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+}
+
+.card-status-dot.active {
+  background: #28a745;
+}
+
+.card-content h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.card-content p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.card-actions {
+  display: flex;
+  margin-top: 4px;
+}
+
+.btn {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.saved-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.count-badge {
+  background: #e9ecef;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.saved-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.saved-item {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.saved-item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.saved-item-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.saved-item-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.saved-item-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: #e9ecef;
+}
+
+.icon-btn.danger:hover {
+  background: #ffebee;
+  color: var(--accent-red);
+}
+
+.empty-list {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 12px;
+}
+
+.popup-footer {
+  padding: 8px 14px;
+  background: #ffffff;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+}

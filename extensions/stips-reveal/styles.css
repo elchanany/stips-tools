@@ -1,0 +1,298 @@
+/* ============================
+   Stips Reveal - Badge Styles
+   ============================ */
+
+/* ---- Main badge (gender + age) ---- */
+.stips-reveal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--stips-badge-size, 11px) * 0.27);
+  padding: calc(var(--stips-badge-size, 11px) * 0.1) calc(var(--stips-badge-size, 11px) * 0.64);
+  border-radius: calc(var(--stips-badge-size, 11px) * 0.9);
+  font-size: var(--stips-badge-size, 11px);
+  font-weight: 700;
+  line-height: calc(var(--stips-badge-size, 11px) * 1.64);
+  white-space: nowrap;
+  vertical-align: middle;
+  margin-inline-start: calc(var(--stips-badge-size, 11px) * 0.36);
+  direction: rtl;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+}
+
+/* Male - blue */
+.stips-reveal-badge.stips-male {
+  background: var(--stips-male-bg, rgba(33, 150, 243, 0.15));
+  color: var(--stips-male-color, #1565c0);
+  border: 1px solid var(--stips-male-border, rgba(33, 150, 243, 0.3));
+}
+
+/* Female - pink */
+.stips-reveal-badge.stips-female {
+  background: var(--stips-female-bg, rgba(233, 30, 99, 0.12));
+  color: var(--stips-female-color, #c2185b);
+  border: 1px solid var(--stips-female-border, rgba(233, 30, 99, 0.25));
+}
+
+/* Unknown gender */
+.stips-reveal-badge.stips-unknown {
+  background: rgba(158, 158, 158, 0.15);
+  color: #616161;
+  border: 1px solid rgba(158, 158, 158, 0.3);
+}
+
+/* Ne'eman (Moderator) Badge - Gold glowing */
+.stips-reveal-badge.stips-neeman {
+  background: linear-gradient(135deg, #ffd700, #ffb300);
+  color: #000;
+  border: 1px solid #ffca28;
+  box-shadow: 0 1px 3px rgba(255, 193, 7, 0.4);
+  font-weight: 700;
+}
+
+.stips-reveal-badge .stips-gender-icon {
+  font-size: calc(var(--stips-badge-size, 11px) - 1px);
+}
+
+.stips-reveal-badge .stips-age-text {
+  font-size: var(--stips-badge-size, 11px);
+}
+
+/* ---- Extra data badges ---- */
+.stips-reveal-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--stips-badge-size, 11px) * 0.18);
+  padding: calc(var(--stips-badge-size, 11px) * 0.1) calc(var(--stips-badge-size, 11px) * 0.55);
+  border-radius: calc(var(--stips-badge-size, 11px) * 0.73);
+  font-size: calc(var(--stips-badge-size, 11px) - 1px);
+  font-weight: 600;
+  line-height: calc(var(--stips-badge-size, 11px) * 1.45);
+  white-space: nowrap;
+  vertical-align: middle;
+  margin-inline-start: calc(var(--stips-badge-size, 11px) * 0.27);
+  direction: rtl;
+  font-family: inherit;
+}
+
+/* Score badge - gold / amber */
+.stips-reveal-extra.stips-score {
+  background: rgba(255, 193, 7, 0.12);
+  color: #f9a825;
+  border: 1px solid rgba(255, 193, 7, 0.25);
+}
+
+/* Questions badge - purple */
+.stips-reveal-extra.stips-questions {
+  background: rgba(156, 39, 176, 0.1);
+  color: #ab47bc;
+  border: 1px solid rgba(156, 39, 176, 0.2);
+}
+
+/* Answers badge - teal */
+.stips-reveal-extra.stips-answers {
+  background: rgba(0, 150, 136, 0.1);
+  color: #26a69a;
+  border: 1px solid rgba(0, 150, 136, 0.2);
+}
+
+/* Flowers badge - pink/rose */
+.stips-reveal-extra.stips-flowers {
+  background: rgba(244, 143, 177, 0.12);
+  color: #f06292;
+  border: 1px solid rgba(244, 143, 177, 0.25);
+}
+
+/* Active since badge - indigo */
+.stips-reveal-extra.stips-active-since {
+  background: rgba(92, 107, 192, 0.1);
+  color: #7986cb;
+  border: 1px solid rgba(92, 107, 192, 0.2);
+}
+
+/* Blocked badge - red/yellow warning */
+.stips-reveal-extra.stips-blocked {
+  background: linear-gradient(135deg, rgba(255,80,0,0.15), rgba(255,200,0,0.15));
+  color: #e65100;
+  border: 1px solid rgba(255, 80, 0, 0.3);
+  font-weight: 700;
+}
+
+/* Marked badge (Red X) - bright red, pulsing */
+.stips-reveal-badge.stips-marked {
+  background: rgba(211, 47, 47, 0.15);
+  color: #d32f2f;
+  border: 1px solid rgba(211, 47, 47, 0.4);
+  font-weight: 700;
+  animation: stips-marked-pulse 2s ease-in-out infinite;
+}
+
+@keyframes stips-marked-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.4); }
+  50% { box-shadow: 0 0 0 3px rgba(211, 47, 47, 0); }
+}
+
+/* ---- Badge wrapper layout ----
+   The wrapper lives INSIDE the flex row of each Stips element.
+   It must NOT override parent heights/overflows. It simply fills
+   whatever horizontal space is available and wraps internally. */
+
+/* ONLY allow .item-profile (pen-friends/home cards) to grow vertically.
+   The inner divs keep their original layout - we only allow the overall card to expand. */
+.item-profile:has(.stips-reveal-wrapper) {
+  height: auto !important;
+  min-height: min-content !important;
+}
+
+.stips-reveal-wrapper {
+  display: inline-flex !important;
+  flex-wrap: wrap !important;
+  flex-direction: row !important;
+  align-items: center;
+  align-content: flex-start;
+  justify-content: flex-end; /* In RTL, pushes badges leftwards */
+  gap: 4px;
+  vertical-align: middle;
+  position: relative;
+  flex: 1 1 0% !important; /* Grow into free space, but start from zero basis */
+  min-width: 0; /* Allow shrinking completely if no room */
+  padding: 2px 4px;
+}
+
+/* Badge children stay fixed size - JS autoFitWrapper handles dynamic resizing */
+.stips-reveal-wrapper > span {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+#stips-reveal-global-tooltip {
+  display: none;
+  position: absolute;
+  z-index: 999999;
+  background: hsl(161, 91%, 40%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  direction: rtl;
+  white-space: normal;
+  min-width: 180px;
+  max-width: 260px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+#stips-reveal-global-tooltip.stips-tooltip-visible {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#stips-reveal-global-tooltip .tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+#stips-reveal-global-tooltip .tooltip-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+#stips-reveal-global-tooltip .tooltip-label {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+}
+
+#stips-reveal-global-tooltip .tooltip-value {
+  color: #ffffff;
+  font-weight: 700;
+  margin-inline-start: auto;
+}
+
+#stips-reveal-global-tooltip .tooltip-bio {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.3);
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ============================
+   Chat page contrast fix
+   ============================ */
+.chat-header .stips-reveal-badge,
+.message-header .stips-reveal-badge,
+app-message-header .stips-reveal-badge,
+[class*="header-chat"] .stips-reveal-badge,
+[class*="message-top"] .stips-reveal-badge {
+  border: none;
+}
+
+.chat-header .stips-reveal-badge.stips-male,
+.message-header .stips-reveal-badge.stips-male,
+app-message-header .stips-reveal-badge.stips-male,
+[class*="header-chat"] .stips-reveal-badge.stips-male,
+[class*="message-top"] .stips-reveal-badge.stips-male {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1565c0;
+  border: 1px solid rgba(21, 101, 192, 0.4);
+}
+
+.chat-header .stips-reveal-badge.stips-female,
+.message-header .stips-reveal-badge.stips-female,
+app-message-header .stips-reveal-badge.stips-female,
+[class*="header-chat"] .stips-reveal-badge.stips-female,
+[class*="message-top"] .stips-reveal-badge.stips-female {
+  background: rgba(255, 255, 255, 0.9);
+  color: #c2185b;
+  border: 1px solid rgba(194, 24, 91, 0.4);
+}
+
+.chat-header .stips-reveal-extra,
+.message-header .stips-reveal-extra,
+app-message-header .stips-reveal-extra,
+[class*="header-chat"] .stips-reveal-extra,
+[class*="message-top"] .stips-reveal-extra {
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+}
+
+.chat-header .stips-reveal-badge.stips-male,
+.message-header .stips-reveal-badge.stips-male,
+app-message-header .stips-reveal-badge.stips-male,
+[class*="header-chat"] .stips-reveal-badge.stips-male,
+[class*="message-top"] .stips-reveal-badge.stips-male {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1565c0;
+}
+
+.green-bg .stips-reveal-badge.stips-female,
+[style*="background-color: rgb(67, 160, 71)"] .stips-reveal-badge.stips-female {
+  background: rgba(255, 255, 255, 0.9);
+  color: #c2185b;
+}
+
+.green-bg .stips-reveal-extra,
+[style*="background-color: rgb(67, 160, 71)"] .stips-reveal-extra {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* ============================
+   Hidden state
+   ============================ */
+.stips-reveal-hidden {
+  display: none !important;
+}

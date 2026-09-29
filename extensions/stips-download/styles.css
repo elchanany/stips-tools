@@ -1,0 +1,80 @@
+/* Stips Download - Discreet Injected Styles */
+
+.stips-download-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #009688;
+  background-color: #ffffff;
+  color: #c9372f;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.stips-download-mini-btn:hover {
+  background-color: #009688;
+  color: #ffffff;
+  transform: scale(1.1);
+  box-shadow: 0 2px 6px rgba(0, 150, 136, 0.3);
+}
+
+.stips-download-mini-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+.stips-download-header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid #009688;
+  border-radius: 20px;
+  color: #009688;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stips-download-header-action:hover {
+  background: #009688;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 150, 136, 0.3);
+}
+
+.stips-download-header-action .stips-dl-icon svg {
+  width: 14px;
+  height: 14px;
+  color: #c9372f;
+  transition: color 0.2s;
+}
+
+.stips-download-header-action:hover .stips-dl-icon svg {
+  color: #ffffff;
+}
+
+/* Floating fallback if chat header container is not found */
+.stips-download-header-action.fixed-floating {
+  position: fixed;
+  top: 15px;
+  left: 20px;
+  z-index: 99999;
+  background: #009688;
+  color: #ffffff;
+  border: none;
+}
+.stips-download-header-action.fixed-floating .stips-dl-icon svg {
+  color: #ffffff;
+}
