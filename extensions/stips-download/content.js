@@ -241,32 +241,22 @@
     return 'משתמש';
   }
 
-  // 5. Inject candidate link buttons (ONLY on feed & conversation list, NEVER inside chat window!)
+  // 5. Inject candidate link buttons (ONLY on feed & conversation list, on the SIDE of each row!)
   function injectCandidateLinkButtons() {
     const activeChat = resolveActiveChatInfo();
 
-    const items = document.querySelectorAll('a[href*="/messages/"], a[href*="/profile/"], [class*="conversation-item"], [class*="chat-item"]');
+    const links = document.querySelectorAll('a[href*="/messages/"], a[href*="/profile/"]');
 
-    items.forEach((item) => {
+    links.forEach((link) => {
       // RULE 1: Never inject inside any chat dialog, chat window, header, toolbar, or messages body
-      if (item.closest('.mat-dialog-container, [role="dialog"], [class*="chat-window"], [class*="chat_box"], .chat-box, header, mat-toolbar, [class*="header"]')) {
+      if (link.closest('.mat-dialog-container, [role="dialog"], [class*="chat-window"], [class*="chat_box"], .chat-box, header, mat-toolbar, [class*="header"]')) {
         return;
       }
 
       // RULE 2: If an active chat is open, do not inject into any part of that active chat
       if (activeChat) {
-        if (activeChat.chatWindow && activeChat.chatWindow.contains(item)) return;
-        if (activeChat.greenHeader && activeChat.greenHeader.contains(item)) return;
-      }
-
-      if (item.getAttribute('data-stips-download-injected') === '1') return;
-
-      let link = item.matches('a') ? item : item.querySelector('a[href*="/messages/"], a[href*="/profile/"]');
-      if (!link) return;
-
-      // Ensure the link itself is not inside chat/header
-      if (link.closest('.mat-dialog-container, [role="dialog"], [class*="chat-window"], [class*="chat_box"], .chat-box, header, mat-toolbar, [class*="header"]')) {
-        return;
+        if (activeChat.chatWindow && activeChat.chatWindow.contains(link)) return;
+        if (activeChat.greenHeader && activeChat.greenHeader.contains(link)) return;
       }
 
       const href = link.getAttribute('href') || '';
@@ -274,16 +264,36 @@
       if (!match) return;
 
       const pid = Number(match[1]);
-      item.setAttribute('data-stips-download-injected', '1');
 
-      // Extract REAL username cleanly (never the post/message text!)
-      const rowName = extractCardUserName(item, link);
+      // RULE 3: Find the row container (mat-list-item or conversation row/card)
+      const rowContainer = link.closest('mat-list-item, [role="listitem"], .mat-list-item, [class*="conversation"], [class*="chat-item"], [class*="message-item"], [class*="dialog-row"], [class*="card"], li') || link.parentElement;
+      if (!rowContainer) return;
+
+      // RULE 4: Ensure at most ONE button per row container!
+      if (rowContainer.getAttribute('data-stips-download-injected') === '1') return;
+      if (rowContainer.querySelector('.stips-download-row-btn')) return;
+
+      rowContainer.setAttribute('data-stips-download-injected', '1');
+
+      // Make rowContainer position: relative so the button aligns nicely on the left side
+      try {
+        const computedPos = window.getComputedStyle(rowContainer).position;
+        if (computedPos === 'static') {
+          rowContainer.style.position = 'relative';
+        }
+      } catch (e) {}
+
+      // Extract REAL username cleanly
+      const rowName = extractCardUserName(rowContainer, link);
 
       const btn = document.createElement('button');
-      btn.className = 'stips-download-mini-btn';
+      btn.className = 'stips-download-row-btn';
       btn.title = `הורד שיחה עם ${rowName} (${pid})`;
-      btn.innerHTML = DOWNLOAD_ICON_SVG;
       btn.type = 'button';
+      btn.innerHTML = `
+        <span class="stips-dl-row-icon">${DOWNLOAD_ICON_SVG}</span>
+        <span class="stips-dl-row-text">הורד</span>
+      `;
 
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -291,8 +301,7 @@
         startDownloadFlow(pid, rowName);
       });
 
-      if (item.classList.contains('stips-download-mini-btn')) return;
-      item.appendChild(btn);
+      rowContainer.appendChild(btn);
     });
   }
 
@@ -301,8 +310,8 @@
     const activeChat = resolveActiveChatInfo();
     const existingBtn = document.getElementById('stips-download-header-btn');
 
-    // Clean up any rogue mini buttons that might have been placed in headers or dialogs
-    document.querySelectorAll('mat-toolbar .stips-download-mini-btn, header .stips-download-mini-btn, [role="dialog"] .stips-download-mini-btn, .mat-dialog-container .stips-download-mini-btn, [class*="chat-window"] .stips-download-mini-btn, [class*="chat_box"] .stips-download-mini-btn').forEach((b) => b.remove());
+    // Clean up any rogue mini buttons
+    document.querySelectorAll('.stips-download-mini-btn, mat-toolbar .stips-download-mini-btn, header .stips-download-mini-btn, [role="dialog"] .stips-download-mini-btn, .mat-dialog-container .stips-download-mini-btn, [class*="chat-window"] .stips-download-mini-btn').forEach((b) => b.remove());
 
     if (!activeChat) {
       // Chat is closed / user exited: immediately remove the download button!

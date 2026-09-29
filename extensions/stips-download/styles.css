@@ -1,36 +1,57 @@
 /* Stips Download - Injected Styles */
 
-/* Mini Download Button for conversation rows & feed cards */
-.stips-download-mini-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-right: 6px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1.5px solid #009688;
-  background-color: #ffffff;
-  color: #009688;
-  cursor: pointer;
-  vertical-align: middle;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  outline: none;
+/* Clean, side-aligned Download Button for conversation rows & list items */
+.stips-download-row-btn {
+  position: absolute !important;
+  left: 14px !important;
+  bottom: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 3px 9px !important;
+  background-color: #f0fdf4 !important;
+  color: #00796b !important;
+  border: 1px solid #80cbc4 !important;
+  border-radius: 12px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  font-family: inherit !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 15 !important;
+  line-height: 1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  outline: none !important;
+  text-decoration: none !important;
+  direction: rtl !important;
 }
 
-.stips-download-mini-btn:hover {
-  background-color: #009688;
-  color: #ffffff;
-  transform: scale(1.1);
-  box-shadow: 0 2px 6px rgba(0, 150, 136, 0.3);
+.stips-download-row-btn:hover {
+  background-color: #009688 !important;
+  color: #ffffff !important;
+  border-color: #009688 !important;
+  transform: translateY(-1px) scale(1.05) !important;
+  box-shadow: 0 3px 6px rgba(0, 150, 136, 0.3) !important;
 }
 
-.stips-download-mini-btn svg {
-  width: 14px;
-  height: 14px;
-  stroke: currentColor;
+.stips-download-row-btn .stips-dl-row-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.stips-download-row-btn .stips-dl-row-icon svg {
+  width: 12px !important;
+  height: 12px !important;
+  stroke: currentColor !important;
+  stroke-width: 2.4 !important;
+}
+
+.stips-download-row-btn .stips-dl-row-text {
+  color: inherit !important;
+  font-weight: 600 !important;
+  font-size: 11px !important;
 }
 
 /* Prominent, unmistakably clear Download Button inside Stips Chat Header */
