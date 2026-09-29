@@ -241,15 +241,33 @@
     return 'משתמש';
   }
 
-  // 5. Inject candidate link buttons (on /messages list view & feed cards)
+  // 5. Inject candidate link buttons (ONLY on feed & conversation list, NEVER inside chat window!)
   function injectCandidateLinkButtons() {
+    const activeChat = resolveActiveChatInfo();
+
     const items = document.querySelectorAll('a[href*="/messages/"], a[href*="/profile/"], [class*="conversation-item"], [class*="chat-item"]');
 
     items.forEach((item) => {
+      // RULE 1: Never inject inside any chat dialog, chat window, header, toolbar, or messages body
+      if (item.closest('.mat-dialog-container, [role="dialog"], [class*="chat-window"], [class*="chat_box"], .chat-box, header, mat-toolbar, [class*="header"]')) {
+        return;
+      }
+
+      // RULE 2: If an active chat is open, do not inject into any part of that active chat
+      if (activeChat) {
+        if (activeChat.chatWindow && activeChat.chatWindow.contains(item)) return;
+        if (activeChat.greenHeader && activeChat.greenHeader.contains(item)) return;
+      }
+
       if (item.getAttribute('data-stips-download-injected') === '1') return;
 
       let link = item.matches('a') ? item : item.querySelector('a[href*="/messages/"], a[href*="/profile/"]');
       if (!link) return;
+
+      // Ensure the link itself is not inside chat/header
+      if (link.closest('.mat-dialog-container, [role="dialog"], [class*="chat-window"], [class*="chat_box"], .chat-box, header, mat-toolbar, [class*="header"]')) {
+        return;
+      }
 
       const href = link.getAttribute('href') || '';
       const match = href.match(/\/(?:messages|profile)\/(\d+)/);
@@ -278,17 +296,20 @@
     });
   }
 
-  // 6. Update UI: Insert button into green header or clean up when chat is closed
+  // 6. Update UI: Insert single prominent button into green header or clean up when chat is closed
   function updateUI() {
     const activeChat = resolveActiveChatInfo();
     const existingBtn = document.getElementById('stips-download-header-btn');
+
+    // Clean up any rogue mini buttons that might have been placed in headers or dialogs
+    document.querySelectorAll('mat-toolbar .stips-download-mini-btn, header .stips-download-mini-btn, [role="dialog"] .stips-download-mini-btn, .mat-dialog-container .stips-download-mini-btn, [class*="chat-window"] .stips-download-mini-btn, [class*="chat_box"] .stips-download-mini-btn').forEach((b) => b.remove());
 
     if (!activeChat) {
       // Chat is closed / user exited: immediately remove the download button!
       if (existingBtn) {
         existingBtn.remove();
       }
-      document.querySelectorAll('.stips-download-header-action').forEach((b) => b.remove());
+      document.querySelectorAll('.stips-download-chat-btn, .stips-download-header-action').forEach((b) => b.remove());
     } else {
       // Chat IS active: ensure download button is in the green header bar
       if (activeChat.greenHeader) {
@@ -299,13 +320,13 @@
 
           const btn = document.createElement('button');
           btn.id = 'stips-download-header-btn';
-          btn.className = 'stips-download-header-action';
+          btn.className = 'stips-download-chat-btn';
           btn.setAttribute('data-partner-id', String(activeChat.partnerId));
           btn.title = `הורד את השיחה עם ${activeChat.partnerName}`;
           btn.type = 'button';
           btn.innerHTML = `
-            <span class="stips-dl-icon">${DOWNLOAD_ICON_SVG}</span>
-            <span class="stips-dl-text">הורד שיחה</span>
+            <span class="stips-dl-btn-icon">${DOWNLOAD_ICON_SVG}</span>
+            <span class="stips-dl-btn-text">הורדת שיחה</span>
           `;
 
           btn.addEventListener('click', (e) => {
@@ -315,7 +336,7 @@
           });
 
           // Insert inside green header: before the 3-dots button, or after partner title
-          const threeDots = activeChat.greenHeader.querySelector('mat-icon, [role="button"], button');
+          const threeDots = activeChat.greenHeader.querySelector('mat-icon, [role="button"], button:not(#stips-download-header-btn)');
           if (threeDots && threeDots.parentNode === activeChat.greenHeader) {
             activeChat.greenHeader.insertBefore(btn, threeDots);
           } else {
