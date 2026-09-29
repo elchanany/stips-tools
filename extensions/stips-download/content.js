@@ -92,56 +92,109 @@
     });
   }
 
-  // 4. Inject Header Button when inside active chat
-  function injectChatHeaderButton() {
-    const partnerId = getChatUserId();
-    if (!partnerId) return;
-
-    // Check if header button already exists
-    if (document.getElementById('stips-download-header-btn')) return;
-
-    // Look for chat header container
-    const headerSelectors = [
+  // Helper to locate the Stips chat green header element
+  function findChatHeaderElement() {
+    // 1. Angular Material Toolbar or standard chat header classes
+    const selectors = [
+      'mat-toolbar',
       '.chat_header',
       '.chat-header',
       '.messages_header',
       '.conversation-header',
-      '.chat-top-bar'
+      '[class*="chat"][class*="header"]',
+      '[class*="messages"][class*="header"]',
+      '[class*="chat-top"]',
+      '[class*="chat_top"]'
     ];
 
-    let headerEl = null;
-    for (const sel of headerSelectors) {
+    for (const sel of selectors) {
       const el = document.querySelector(sel);
-      if (el) {
-        headerEl = el;
-        break;
+      if (el && el.offsetParent !== null) {
+        return el;
       }
     }
 
-    // Fallback to top-level container if specific header is not found
-    if (!headerEl) {
-      headerEl = document.querySelector('.chat_container, .messages_container') || document.body;
+    // 2. Find 3-dots menu button (⋮ or more_vert) in chat
+    const allIcons = document.querySelectorAll('mat-icon, button, span, [role="button"]');
+    for (const ic of allIcons) {
+      const txt = ic.textContent?.trim() || '';
+      if (txt === '⋮' || txt === 'more_vert' || txt === '•••') {
+        let parent = ic.parentElement;
+        for (let i = 0; i < 4; i++) {
+          if (!parent || parent === document.body) break;
+          const h = parent.clientHeight;
+          if (h >= 35 && h <= 85) {
+            return parent;
+          }
+          parent = parent.parentElement;
+        }
+      }
     }
+
+    // 3. Find partner name element in chat
+    const partnerName = extractPartnerName();
+    if (partnerName && partnerName !== 'משתמש סטיפס') {
+      const allTextEls = document.querySelectorAll('h1, h2, h3, h4, span, div');
+      for (const el of allTextEls) {
+        if (el.children.length === 0 && el.textContent?.trim() === partnerName) {
+          let parent = el.parentElement;
+          for (let i = 0; i < 4; i++) {
+            if (!parent || parent === document.body) break;
+            const h = parent.clientHeight;
+            if (h >= 35 && h <= 85) {
+              return { container: parent, nameEl: el };
+            }
+            parent = parent.parentElement;
+          }
+        }
+      }
+    }
+
+    // 4. Modal/Dialog container top child
+    const modalBox = document.querySelector('.mat-dialog-container, [role="dialog"], [class*="chat-window"], [class*="chat_window"]');
+    if (modalBox && modalBox.firstElementChild) {
+      return modalBox.firstElementChild;
+    }
+
+    return null;
+  }
+
+  // 4. Inject Header Button when inside active chat (directly in the green bar)
+  function injectChatHeaderButton() {
+    const partnerId = getChatUserId();
+    if (!partnerId) return;
+
+    if (document.getElementById('stips-download-header-btn')) return;
+
+    const headerResult = findChatHeaderElement();
+    if (!headerResult) return;
+
+    const headerEl = headerResult.container || headerResult;
+    const nameEl = headerResult.nameEl || null;
 
     const headerBtn = document.createElement('button');
     headerBtn.id = 'stips-download-header-btn';
     headerBtn.className = 'stips-download-header-action';
-    headerBtn.title = 'הורד את השיחה המלאה (Stips Download)';
+    headerBtn.title = 'הורד את השיחה (Stips Download)';
+    headerBtn.type = 'button';
     headerBtn.innerHTML = `
       <span class="stips-dl-icon">${DOWNLOAD_ICON_SVG}</span>
       <span class="stips-dl-text">הורד שיחה</span>
     `;
 
-    headerBtn.addEventListener('click', () => {
+    headerBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const name = extractPartnerName();
       startDownloadFlow(partnerId, name);
     });
 
-    if (headerEl === document.body) {
-      headerBtn.classList.add('fixed-floating');
+    // If we found the exact name element, insert directly next to the name!
+    if (nameEl && nameEl.parentNode) {
+      nameEl.parentNode.insertBefore(headerBtn, nameEl.nextSibling);
+    } else {
+      headerEl.appendChild(headerBtn);
     }
-
-    headerEl.appendChild(headerBtn);
   }
 
   // 5. Shadow DOM Modal Infrastructure (Defensive against Stips styles)

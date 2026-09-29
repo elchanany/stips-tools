@@ -1,4 +1,4 @@
-/* Stips Download - Discreet Injected Styles */
+/* Stips Download - Injected Styles */
 
 .stips-download-mini-btn {
   display: inline-flex;
@@ -31,50 +31,43 @@
   height: 13px;
 }
 
+/* Injected directly inside the Stips Chat Green Header Bar */
 .stips-download-header-action {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: #ffffff;
-  border: 1px solid #009688;
-  border-radius: 20px;
-  color: #009688;
-  font-size: 13px;
+  gap: 5px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 16px;
+  color: #ffffff;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  margin-right: 10px;
+  margin: 0 8px;
   transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(4px);
+  vertical-align: middle;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .stips-download-header-action:hover {
-  background: #009688;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 150, 136, 0.3);
+  background: rgba(255, 255, 255, 0.38);
+  border-color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .stips-download-header-action .stips-dl-icon svg {
   width: 14px;
   height: 14px;
-  color: #c9372f;
-  transition: color 0.2s;
+  color: #ffffff;
+  stroke: #ffffff;
 }
 
-.stips-download-header-action:hover .stips-dl-icon svg {
+.stips-download-header-action .stips-dl-text {
   color: #ffffff;
-}
-
-/* Floating fallback if chat header container is not found */
-.stips-download-header-action.fixed-floating {
-  position: fixed;
-  top: 15px;
-  left: 20px;
-  z-index: 99999;
-  background: #009688;
-  color: #ffffff;
-  border: none;
-}
-.stips-download-header-action.fixed-floating .stips-dl-icon svg {
-  color: #ffffff;
+  font-family: inherit;
 }
