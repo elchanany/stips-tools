@@ -34,8 +34,17 @@ mat-drawer .stips-download-row-btn,
 [class*="drawer"] .stips-download-row-btn,
 [class*="sidebar"] .stips-download-row-btn,
 nav .stips-download-row-btn,
-aside .stips-download-row-btn {
+aside .stips-download-row-btn,
+/* Strictly hide buttons on question pages, answers, and comments */
+app-ask .stips-download-row-btn,
+app-question .stips-download-row-btn,
+.ask-page .stips-download-row-btn,
+[class*="ask"] .stips-download-row-btn,
+[class*="question"] .stips-download-row-btn,
+[class*="answer"] .stips-download-row-btn,
+[class*="response"] .stips-download-row-btn {
   display: none !important;
+  visibility: hidden !important;
   pointer-events: none !important;
 }
 

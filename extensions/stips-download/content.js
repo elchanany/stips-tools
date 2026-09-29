@@ -422,13 +422,34 @@
     return 'משתמש';
   }
 
-  // 6. Inject candidate link buttons (ONLY on feed & conversation list, NEVER inside sidebar or chat!)
+  // 6. Inject candidate link buttons (ONLY on pen-friends & messages inbox, NEVER on question pages, answers, sidebar, or chat!)
   function injectCandidateLinkButtons() {
+    const pathname = window.location.pathname;
+
+    // RULE 0: If on an /ask/ or /question/ page: NEVER inject candidate buttons on answers or questions!
+    if (pathname.includes('/ask') || pathname.includes('/question')) {
+      document.querySelectorAll('.stips-download-row-btn').forEach((b) => b.remove());
+      return;
+    }
+
+    // Only allow candidate buttons on /pen-friends or /messages inbox list
+    const isPenFriends = pathname.includes('pen-friends');
+    const isMessages = pathname.includes('messages') && !pathname.match(/\/messages\/\d+/);
+    if (!isPenFriends && !isMessages) {
+      document.querySelectorAll('.stips-download-row-btn').forEach((b) => b.remove());
+      return;
+    }
+
     const links = document.querySelectorAll('a[href*="/messages/"], a[href*="/profile/"]');
 
     links.forEach((link) => {
       // RULE 1: STRICTLY EXCLUDE sidebar, navigation drawer, navbar, and site header!
       if (link.closest('mat-sidenav, mat-drawer, .mat-sidenav, .mat-drawer, [class*="sidenav"], [class*="drawer"], [class*="sidebar"], [class*="nav-menu"], nav, aside, header, .site-header, app-navigation, app-sidebar, app-menu')) {
+        return;
+      }
+
+      // RULE 2: STRICTLY EXCLUDE questions, answers, and comments!
+      if (link.closest('app-ask, app-question, [class*="ask"], [class*="question"], [class*="answer"], [class*="response"], [class*="comment"]')) {
         return;
       }
 
