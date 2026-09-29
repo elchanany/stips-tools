@@ -522,54 +522,54 @@ function buildArchiveHtml({ metadata, messages }) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ארכיון שיחה - ${dataPayload.partnerName} | Stips Download</title>
+  <title>שיחה בסטיפס עם ${dataPayload.partnerName}</title>
   <style>
     :root {
-      --bg-primary: #f0f2f5;
+      --bg-primary: #f0f4f3;
       --bg-surface: #ffffff;
-      --bg-header: #ffffff;
-      --border-color: #e4e6eb;
+      --bg-header: linear-gradient(135deg, #09c286 0%, #07a370 100%);
+      --border-color: #e2e8f0;
       --text-primary: #1c1e21;
       --text-secondary: #65676b;
       --text-muted: #8a8d91;
-      --accent: #009688;
-      --accent-hover: #00796b;
+      --accent: #09c286;
+      --accent-hover: #07a370;
       --bubble-me: #ffffff;
       --bubble-me-text: #1c1e21;
-      --bubble-me-border: #d0d7de;
-      --bubble-me-sender: #00796b;
-      --bubble-other: #183f38;
+      --bubble-me-border: #d5dbdb;
+      --bubble-me-sender: #079c6c;
+      --bubble-other: #182825;
       --bubble-other-text: #ffffff;
-      --bubble-other-border: #13332d;
-      --bubble-other-sender: #80cbc4;
-      --bubble-other-meta: #b2dfdb;
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+      --bubble-other-border: #101c1a;
+      --bubble-other-sender: #5eead4;
+      --bubble-other-meta: #a7f3d0;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.12);
       --radius-bubble: 16px;
       --radius-sm: 8px;
     }
 
     body.dark {
-      --bg-primary: #0b1114;
-      --bg-surface: #192226;
-      --bg-header: #192226;
-      --border-color: #27353b;
+      --bg-primary: #0d1514;
+      --bg-surface: #152220;
+      --bg-header: linear-gradient(135deg, #066d4b 0%, #0c4a35 100%);
+      --border-color: #1f332f;
       --text-primary: #e9edef;
-      --text-secondary: #8696a0;
-      --text-muted: #667781;
-      --accent: #26a69a;
-      --accent-hover: #4db6ac;
-      --bubble-me: #263339;
+      --text-secondary: #8fa39f;
+      --text-muted: #6b827e;
+      --accent: #09c286;
+      --accent-hover: #34d399;
+      --bubble-me: #20332f;
       --bubble-me-text: #ffffff;
-      --bubble-me-border: #3d5059;
-      --bubble-me-sender: #4db6ac;
-      --bubble-other: #0f1c1f;
+      --bubble-me-border: #2d4742;
+      --bubble-me-sender: #34d399;
+      --bubble-other: #0d1715;
       --bubble-other-text: #e9edef;
-      --bubble-other-border: #091214;
-      --bubble-other-sender: #80cbc4;
-      --bubble-other-meta: #8696a0;
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+      --bubble-other-border: #070e0d;
+      --bubble-other-sender: #5eead4;
+      --bubble-other-meta: #8fa39f;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
     }
 
     * {
@@ -592,44 +592,50 @@ function buildArchiveHtml({ metadata, messages }) {
     /* Header */
     header {
       background: var(--bg-header);
-      border-bottom: 1px solid var(--border-color);
-      padding: 10px 16px;
+      padding: 12px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      box-shadow: var(--shadow-sm);
+      gap: 16px;
+      box-shadow: 0 3px 12px rgba(9, 194, 134, 0.25);
       z-index: 100;
+      color: #ffffff;
     }
 
     .header-info {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
 
     .avatar {
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: var(--accent);
-      color: #fff;
+      background: #ffffff;
+      color: #09c286;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      font-weight: bold;
+      font-size: 20px;
+      font-weight: 800;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      flex-shrink: 0;
     }
 
     .header-titles h1 {
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 17px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.2px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
     }
 
     .header-titles .stats {
       font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 2px;
+      color: rgba(255, 255, 255, 0.88);
+      margin-top: 3px;
     }
 
     .header-actions {
@@ -637,6 +643,41 @@ function buildArchiveHtml({ metadata, messages }) {
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
+    }
+
+    header button {
+      background: rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 20px;
+      padding: 6px 13px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      backdrop-filter: blur(4px);
+    }
+
+    header button:hover {
+      background: #ffffff;
+      color: #09c286;
+      border-color: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    header button.primary {
+      background: #ffffff;
+      color: #09c286;
+      border-color: #ffffff;
+      font-weight: 700;
+    }
+
+    header button.primary:hover {
+      background: #e6fdf5;
+      color: #079c6c;
     }
 
     button {
@@ -676,17 +717,30 @@ function buildArchiveHtml({ metadata, messages }) {
 
     .search-input {
       width: 100%;
-      padding: 7px 12px;
+      padding: 7px 14px;
       border-radius: 20px;
-      border: 1px solid var(--border-color);
-      background: var(--bg-primary);
-      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      background: rgba(255, 255, 255, 0.22);
+      color: #ffffff;
       font-size: 13px;
       outline: none;
+      backdrop-filter: blur(4px);
+      transition: all 0.2s ease;
+    }
+
+    .search-input::placeholder {
+      color: rgba(255, 255, 255, 0.8);
     }
 
     .search-input:focus {
-      border-color: var(--accent);
+      background: #ffffff;
+      color: #1c1e21;
+      border-color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .search-input:focus::placeholder {
+      color: #8a8d91;
     }
 
     .search-results {
