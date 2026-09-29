@@ -35,65 +35,7 @@
     </svg>
   `;
 
-  // 1. Inject Main-World API Hook to intercept Stips messages API in real-time
-  function injectMainWorldHook() {
-    try {
-      const script = document.createElement('script');
-      script.id = 'stips-download-main-hook';
-      script.textContent = `
-        (() => {
-          if (window.__STIPS_HOOK_INSTALLED__) return;
-          window.__STIPS_HOOK_INSTALLED__ = true;
 
-          function handleUrl(url) {
-            try {
-              if (typeof url === 'string' && url.includes('messages.from_user')) {
-                const match = url.match(/api_params=([^&]+)/);
-                if (match) {
-                  const decoded = decodeURIComponent(match[1]);
-                  const params = JSON.parse(decoded);
-                  if (params && params.userid) {
-                    window.dispatchEvent(new CustomEvent('stips_partner_detected', {
-                      detail: { partnerId: Number(params.userid) }
-                    }));
-                  }
-                }
-              }
-            } catch (e) {}
-          }
-
-          // Hook window.fetch
-          const origFetch = window.fetch;
-          window.fetch = function(...args) {
-            if (args[0]) handleUrl(args[0]);
-            return origFetch.apply(this, args);
-          };
-
-          // Hook XMLHttpRequest
-          const origOpen = XMLHttpRequest.prototype.open;
-          XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-            handleUrl(url);
-            return origOpen.apply(this, [method, url, ...rest]);
-          };
-        })();
-      `;
-      (document.head || document.documentElement).appendChild(script);
-      script.remove();
-    } catch (e) {}
-  }
-
-  injectMainWorldHook();
-
-  // Listen to partner detected from main world
-  window.addEventListener('stips_partner_detected', (e) => {
-    if (e.detail?.partnerId) {
-      detectedPartnerId = Number(e.detail.partnerId);
-      if (detectedPartnerName) {
-        partnerIdMap.set(detectedPartnerName, detectedPartnerId);
-      }
-      updateUI();
-    }
-  });
 
   // Track clicks on user cards / links across the page
   document.addEventListener('click', (e) => {
