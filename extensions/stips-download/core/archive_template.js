@@ -168,12 +168,15 @@ function generateArchiveAppFunction() {
         const contentDiv = document.createElement('div');
         contentDiv.className = 'msg-bubble';
 
-        if (msg.side !== 'me') {
-          const senderDiv = document.createElement('div');
-          senderDiv.className = 'msg-sender';
-          senderDiv.innerText = msg.sender || ARCHIVE.partnerName || 'משתמש';
-          contentDiv.appendChild(senderDiv);
+        // Sender label according to user specification
+        const senderDiv = document.createElement('div');
+        senderDiv.className = 'msg-sender';
+        if (msg.side === 'me') {
+          senderDiv.innerText = msg.sender || (ARCHIVE.myProfileName ? `${ARCHIVE.myProfileName} (אתה):` : 'אתה:');
+        } else {
+          senderDiv.innerText = `${msg.sender || ARCHIVE.partnerName || 'משתמש'}:`;
         }
+        contentDiv.appendChild(senderDiv);
 
         contentDiv.appendChild(textSpan);
         contentDiv.appendChild(metaDiv);
@@ -503,6 +506,7 @@ function buildArchiveHtml({ metadata, messages }) {
     exportedAt: new Date().toISOString(),
     partnerId: metadata?.partnerId || 0,
     partnerName: metadata?.partnerName || 'שיחה',
+    myProfileName: metadata?.myProfileName || '',
     messages: messages || []
   };
 
@@ -530,10 +534,15 @@ function buildArchiveHtml({ metadata, messages }) {
       --text-muted: #8a8d91;
       --accent: #009688;
       --accent-hover: #00796b;
-      --bubble-me: #dcf8c6;
-      --bubble-me-text: #111111;
-      --bubble-other: #ffffff;
-      --bubble-other-text: #111111;
+      --bubble-me: #ffffff;
+      --bubble-me-text: #1c1e21;
+      --bubble-me-border: #d0d7de;
+      --bubble-me-sender: #00796b;
+      --bubble-other: #183f38;
+      --bubble-other-text: #ffffff;
+      --bubble-other-border: #13332d;
+      --bubble-other-sender: #80cbc4;
+      --bubble-other-meta: #b2dfdb;
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
       --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
       --radius-bubble: 16px;
@@ -541,19 +550,24 @@ function buildArchiveHtml({ metadata, messages }) {
     }
 
     body.dark {
-      --bg-primary: #0f1416;
-      --bg-surface: #1e2428;
-      --bg-header: #1e2428;
-      --border-color: #2a3237;
+      --bg-primary: #0b1114;
+      --bg-surface: #192226;
+      --bg-header: #192226;
+      --border-color: #27353b;
       --text-primary: #e9edef;
       --text-secondary: #8696a0;
       --text-muted: #667781;
       --accent: #26a69a;
       --accent-hover: #4db6ac;
-      --bubble-me: #005c4b;
-      --bubble-me-text: #e9edef;
-      --bubble-other: #202c33;
+      --bubble-me: #263339;
+      --bubble-me-text: #ffffff;
+      --bubble-me-border: #3d5059;
+      --bubble-me-sender: #4db6ac;
+      --bubble-other: #0f1c1f;
       --bubble-other-text: #e9edef;
+      --bubble-other-border: #091214;
+      --bubble-other-sender: #80cbc4;
+      --bubble-other-meta: #8696a0;
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
       --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
     }
@@ -794,48 +808,68 @@ function buildArchiveHtml({ metadata, messages }) {
     /* Message Rows */
     .msg-row {
       display: flex;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       width: 100%;
     }
 
+    /* כותב (אתה): מיושר לצד שמאל */
     .msg-row.me {
-      justify-content: flex-start; /* in RTL, 'me' aligns to the right / start */
+      justify-content: flex-end; /* In RTL direction, flex-end aligns to the LEFT */
     }
 
+    /* משיב (בן השיח): מיושר לצד ימין כמו בסטיפס */
     .msg-row.other {
-      justify-content: flex-end; /* in RTL, 'other' aligns to the left / end */
+      justify-content: flex-start; /* In RTL direction, flex-start aligns to the RIGHT */
     }
 
     .msg-bubble {
       max-width: 72%;
-      padding: 8px 12px;
+      padding: 9px 13px;
       border-radius: var(--radius-bubble);
       box-shadow: var(--shadow-sm);
       position: relative;
       word-break: break-word;
-      line-height: 1.45;
-      font-size: 14px;
+      line-height: 1.48;
+      font-size: 14.5px;
       transition: background 0.3s;
     }
 
+    /* בועית הכותב (אתה): צבע בהיר לבן, פינה שמאלית-תחתונה מחודדת */
     .msg-row.me .msg-bubble {
       background: var(--bubble-me);
       color: var(--bubble-me-text);
-      border-bottom-right-radius: 4px;
+      border: 1px solid var(--bubble-me-border);
+      border-bottom-left-radius: 4px;
+      border-bottom-right-radius: 16px;
     }
 
+    .msg-row.me .msg-sender {
+      color: var(--bubble-me-sender);
+      text-align: right;
+    }
+
+    /* בועית המשיב: צבע כהה, פינה ימנית-תחתונה מחודדת */
     .msg-row.other .msg-bubble {
       background: var(--bubble-other);
       color: var(--bubble-other-text);
-      border-bottom-left-radius: 4px;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--bubble-other-border);
+      border-bottom-right-radius: 4px;
+      border-bottom-left-radius: 16px;
+    }
+
+    .msg-row.other .msg-sender {
+      color: var(--bubble-other-sender);
+      text-align: right;
+    }
+
+    .msg-row.other .msg-meta {
+      color: var(--bubble-other-meta);
     }
 
     .msg-sender {
       font-size: 11px;
-      font-weight: 600;
-      color: var(--accent);
-      margin-bottom: 2px;
+      font-weight: 700;
+      margin-bottom: 3px;
     }
 
     .msg-text {

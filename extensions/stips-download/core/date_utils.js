@@ -157,7 +157,7 @@ function formatHebrewDate(date) {
 /**
  * Normalizes message from raw API object using the verified reference logic.
  */
-function normalizeApiMessage(raw, partnerId, partnerName) {
+function normalizeApiMessage(raw, partnerId, partnerName, myProfileName = null) {
   if (!raw || !Number.isFinite(Number(raw.id))) {
     return null;
   }
@@ -169,6 +169,8 @@ function normalizeApiMessage(raw, partnerId, partnerName) {
 
   const from = Number(raw.fromuserid);
   const side = from === Number(partnerId) ? 'other' : 'me';
+  const meSender = myProfileName ? `${myProfileName} (אתה)` : 'אתה';
+  const otherSender = partnerName || 'משתמש';
 
   const gregorianStr = formatGregorianDate(date);
   const hebrewDateStr = formatHebrewDate(date);
@@ -180,7 +182,7 @@ function normalizeApiMessage(raw, partnerId, partnerName) {
     fromuserid: Number(raw.fromuserid),
     touserid: Number(raw.touserid),
     side,
-    sender: side === 'me' ? 'אני' : (partnerName || 'משתמש'),
+    sender: side === 'me' ? meSender : otherSender,
     timestamp: date.getTime(),
     rawTime: String(raw.time || ''),
     time: String(raw.time || '').slice(11, 16), // HH:mm

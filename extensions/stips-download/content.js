@@ -1,7 +1,7 @@
 /**
  * Stips Download - Content Script
  * Seamless chat detection, discreet UI injection, shadow-DOM progress modal,
- * and background download coordinator.
+ * and resilient background download coordinator.
  */
 
 (() => {
@@ -14,190 +14,322 @@
   // State
   let currentPartnerId = null;
   let currentPartnerName = null;
+  let myProfileInfo = { myName: 'אתה', myId: null };
   let activeAbortController = null;
   let isPaused = false;
   let shadowRoot = null;
   let modalContainer = null;
 
-  // Icons Base64 / SVG
+  // DOM elements cached inside Shadow Modal to prevent flicker
+  let modalDOMElements = null;
+
+  // Download Icon SVG
   const DOWNLOAD_ICON_SVG = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
       <polyline points="7 10 12 15 17 10"></polyline>
       <line x1="12" y1="15" x2="12" y2="3"></line>
     </svg>
   `;
 
-  // 1. Helper: extract chat partner ID from URL
-  function getChatUserId(url = window.location.href) {
-    const match = String(url).match(/\/messages\/(\d+)/);
-    return match ? Number(match[1]) : null;
-  }
+  // 1. Detect Logged-In User Profile ("אתה")
+  function detectMyProfile() {
+    try {
+      for (const key of ['user', 'currentUser', 'profile', 'userData', 'auth']) {
+        const raw = localStorage.getItem(key);
+        if (raw && (raw.startsWith('{') || raw.startsWith('['))) {
+          const parsed = JSON.parse(raw);
+          const u = parsed.user || parsed;
+          if (u.name || u.username) {
+            myProfileInfo.myName = u.name || u.username;
+          }
+          if (u.id || u.userid) {
+            myProfileInfo.myId = Number(u.id || u.userid);
+          }
+          if (myProfileInfo.myName !== 'אתה') break;
+        }
+      }
+    } catch (e) {}
 
-  // 2. Helper: extract partner name from page DOM
-  function extractPartnerName() {
-    // Try common Stips header and conversation title selectors
-    const selectors = [
-      '.chat_header .user_name',
-      '.chat-header h1',
-      '.chat-header .name',
-      '.messages_header .title',
-      '.conversation-header .username',
-      'h1.title',
-      '.profile_name'
-    ];
-
-    for (const sel of selectors) {
-      const el = document.querySelector(sel);
-      if (el && el.innerText && el.innerText.trim()) {
-        return el.innerText.trim();
+    // Fallback: Check top navbar / user menu in Stips page
+    if (myProfileInfo.myName === 'אתה') {
+      const links = document.querySelectorAll('header a[href*="/profile/"], nav a[href*="/profile/"], .user-avatar, .user_box');
+      for (const a of links) {
+        if (a.closest('.mat-dialog-container, [role="dialog"], #messages-wrapper, [class*="chat-window"]')) continue;
+        const text = a.textContent?.trim();
+        if (text && text.length >= 2 && text.length <= 30 && !text.includes('הודעות')) {
+          myProfileInfo.myName = text;
+          break;
+        }
       }
     }
 
-    // Fallback: check document title
-    const docTitle = document.title;
-    if (docTitle && docTitle.includes('-')) {
-      const parts = docTitle.split('-');
-      if (parts[0].trim()) return parts[0].trim();
-    }
-
-    return 'משתמש סטיפס';
+    return myProfileInfo;
   }
 
-  // 3. Inject Button next to /messages/<ID> links on the page
-  function injectCandidateLinkButtons() {
-    const links = document.querySelectorAll('a[href*="/messages/"]:not([data-stips-download-injected="1"])');
+  // 2. Locate the active open chat window on screen
+  function findActiveChatWindow() {
+    // Strategy A: Modal / Dialog container with chat contents currently visible
+    const modals = document.querySelectorAll('.mat-dialog-container, [role="dialog"], [class*="chat-window"], [class*="chat_box"], .chat-box');
+    for (const m of modals) {
+      if (m.clientHeight > 180 && m.clientWidth > 180 && m.offsetParent !== null) {
+        const style = window.getComputedStyle(m);
+        if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+          return m;
+        }
+      }
+    }
 
-    links.forEach((link) => {
-      link.setAttribute('data-stips-download-injected', '1');
-      const href = link.getAttribute('href');
-      const partnerId = getChatUserId(href);
-      if (!partnerId) return;
+    // Strategy B: Chat input box parent container
+    const inputs = document.querySelectorAll('input, textarea');
+    for (const inp of inputs) {
+      const ph = inp.placeholder || '';
+      const aria = inp.getAttribute('aria-label') || '';
+      if (ph.includes('הודעה') || ph.includes('ההודעה שלך') || aria.includes('הודעה')) {
+        let cur = inp.parentElement;
+        while (cur && cur !== document.body) {
+          if (cur.clientHeight > 200 && cur.clientWidth > 200 && cur.offsetParent !== null) {
+            return cur;
+          }
+          cur = cur.parentElement;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // 3. Locate the green header bar inside the chat window
+  function getGreenHeader(chatWindow) {
+    if (!chatWindow) return null;
+
+    // Search for toolbar or header element
+    const headers = chatWindow.querySelectorAll('mat-toolbar, header, [class*="header"], [class*="top"]');
+    for (const h of headers) {
+      if (h.clientHeight >= 35 && h.clientHeight <= 95) {
+        return h;
+      }
+    }
+
+    // Check first visual top bar of chatWindow
+    for (let i = 0; i < Math.min(chatWindow.children.length, 3); i++) {
+      const child = chatWindow.children[i];
+      if (child.clientHeight >= 35 && child.clientHeight <= 95) {
+        return child;
+      }
+    }
+
+    return null;
+  }
+
+  // 4. Resolve active chat info (Partner ID, Name, Green Header)
+  // Strictly isolates the active chat partner to ensure no incorrect chat history is ever downloaded!
+  function resolveActiveChatInfo() {
+    const loc = window.location.href;
+    const msgMatch = loc.match(/\/messages\/(\d+)/);
+    const profileMatch = loc.match(/\/profile\/(\d+)/);
+
+    let partnerId = null;
+    let partnerName = '';
+    const chatWindow = findActiveChatWindow();
+    const greenHeader = getGreenHeader(chatWindow);
+
+    // If chat dialog is open, the partner MUST be extracted from the greenHeader (NOT from chat body!)
+    if (greenHeader) {
+      const headerLink = greenHeader.querySelector('a[href*="/profile/"], a[href*="/messages/"]');
+      if (headerLink) {
+        const hm = (headerLink.getAttribute('href') || '').match(/\/(?:profile|messages)\/(\d+)/);
+        if (hm) {
+          partnerId = Number(hm[1]);
+        }
+      }
+
+      // Extract partner name from greenHeader
+      const textEls = greenHeader.querySelectorAll('h1, h2, h3, h4, span, a, div');
+      for (const t of textEls) {
+        const txt = t.textContent?.trim() || '';
+        if (txt && txt !== '⋮' && txt !== 'more_vert' && txt !== '•••' && !txt.includes('הורד')) {
+          if (txt.length >= 2 && txt.length <= 40 && t.children.length === 0) {
+            partnerName = txt;
+            break;
+          }
+        }
+      }
+    }
+
+    // If no ID from header link, check if URL is on /messages/:id
+    if (!partnerId && msgMatch) {
+      partnerId = Number(msgMatch[1]);
+    }
+
+    // If on a profile page: /profile/:id
+    if (!partnerId && profileMatch) {
+      partnerId = Number(profileMatch[1]);
+    }
+
+    // If neither exists -> no active chat is open!
+    if (!partnerId) {
+      return null;
+    }
+
+    if (!partnerName) {
+      const docTitle = document.title;
+      if (docTitle && docTitle.includes('-')) {
+        partnerName = docTitle.split('-')[0].trim();
+      }
+    }
+
+    return {
+      partnerId,
+      partnerName: partnerName || `משתמש (${partnerId})`,
+      chatWindow,
+      greenHeader
+    };
+  }
+
+  function cleanRawUserName(raw) {
+    if (!raw) return '';
+    return raw
+      .replace(/(?:בת|בן)\s+\d+/g, '')
+      .replace(/מסומן/g, '')
+      .replace(/\d+\s+(?:שניות|דקות|שעות|ימים|שבועות|חודשים|שנים)/g, '')
+      .replace(/לפני\s+\S+/g, '')
+      .replace(/^[\s,.:;•\-#"'״׳]+|[\s,.:;•\-#"'״׳]+$/g, '')
+      .trim();
+  }
+
+  function isValidUsername(txt) {
+    if (!txt) return false;
+    if (txt.length < 2 || txt.length > 30) return false;
+    if (txt.includes('#') || txt.includes('\n')) return false;
+    if (txt.split(/\s+/).length > 4) return false;
+    const excludeWords = ['הורד', 'הודעה', 'ההודעה', 'תגובה', 'פרטים', 'עריכה', 'מחיקה', 'שניות', 'דקות', 'שעות', 'לפני'];
+    if (excludeWords.some((w) => txt === w)) return false;
+    return true;
+  }
+
+  function extractCardUserName(item, link) {
+    if (link) {
+      const linkText = cleanRawUserName(link.textContent);
+      if (isValidUsername(linkText)) return linkText;
+
+      const userHeader = link.closest('[class*="user"], [class*="author"], [class*="profile"], [class*="header"], [class*="item"]');
+      if (userHeader) {
+        const nickEls = userHeader.querySelectorAll('[class*="user-name"], [class*="username"], [class*="nick"], [class*="author"], strong, b');
+        for (const el of nickEls) {
+          if (el.children.length > 0) continue;
+          const t = cleanRawUserName(el.textContent);
+          if (isValidUsername(t)) return t;
+        }
+
+        const spans = userHeader.querySelectorAll('span, a');
+        for (const s of spans) {
+          if (s.children.length > 0) continue;
+          const t = cleanRawUserName(s.textContent);
+          if (isValidUsername(t)) return t;
+        }
+      }
+    }
+
+    const directUserEls = item.querySelectorAll('[class*="username"], [class*="user-name"], [class*="author"], [class*="nick"]');
+    for (const el of directUserEls) {
+      if (el.children.length > 0) continue;
+      const t = cleanRawUserName(el.textContent);
+      if (isValidUsername(t)) return t;
+    }
+
+    return 'משתמש';
+  }
+
+  // 5. Inject candidate link buttons (on /messages list view & feed cards)
+  function injectCandidateLinkButtons() {
+    const items = document.querySelectorAll('a[href*="/messages/"], a[href*="/profile/"], [class*="conversation-item"], [class*="chat-item"]');
+
+    items.forEach((item) => {
+      if (item.getAttribute('data-stips-download-injected') === '1') return;
+
+      let link = item.matches('a') ? item : item.querySelector('a[href*="/messages/"], a[href*="/profile/"]');
+      if (!link) return;
+
+      const href = link.getAttribute('href') || '';
+      const match = href.match(/\/(?:messages|profile)\/(\d+)/);
+      if (!match) return;
+
+      const pid = Number(match[1]);
+      item.setAttribute('data-stips-download-injected', '1');
+
+      // Extract REAL username cleanly (never the post/message text!)
+      const rowName = extractCardUserName(item, link);
 
       const btn = document.createElement('button');
       btn.className = 'stips-download-mini-btn';
-      btn.title = 'הורד את השיחה (Stips Download)';
+      btn.title = `הורד שיחה עם ${rowName} (${pid})`;
       btn.innerHTML = DOWNLOAD_ICON_SVG;
       btn.type = 'button';
 
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const nameGuess = link.innerText?.trim() || 'משתמש';
-        startDownloadFlow(partnerId, nameGuess);
+        startDownloadFlow(pid, rowName);
       });
 
-      // Insert cleanly next to link without disrupting flow
-      link.parentNode?.insertBefore(btn, link.nextSibling);
+      if (item.classList.contains('stips-download-mini-btn')) return;
+      item.appendChild(btn);
     });
   }
 
-  // Helper to locate the Stips chat green header element
-  function findChatHeaderElement() {
-    // 1. Angular Material Toolbar or standard chat header classes
-    const selectors = [
-      'mat-toolbar',
-      '.chat_header',
-      '.chat-header',
-      '.messages_header',
-      '.conversation-header',
-      '[class*="chat"][class*="header"]',
-      '[class*="messages"][class*="header"]',
-      '[class*="chat-top"]',
-      '[class*="chat_top"]'
-    ];
+  // 6. Update UI: Insert button into green header or clean up when chat is closed
+  function updateUI() {
+    const activeChat = resolveActiveChatInfo();
+    const existingBtn = document.getElementById('stips-download-header-btn');
 
-    for (const sel of selectors) {
-      const el = document.querySelector(sel);
-      if (el && el.offsetParent !== null) {
-        return el;
+    if (!activeChat) {
+      // Chat is closed / user exited: immediately remove the download button!
+      if (existingBtn) {
+        existingBtn.remove();
       }
-    }
-
-    // 2. Find 3-dots menu button (⋮ or more_vert) in chat
-    const allIcons = document.querySelectorAll('mat-icon, button, span, [role="button"]');
-    for (const ic of allIcons) {
-      const txt = ic.textContent?.trim() || '';
-      if (txt === '⋮' || txt === 'more_vert' || txt === '•••') {
-        let parent = ic.parentElement;
-        for (let i = 0; i < 4; i++) {
-          if (!parent || parent === document.body) break;
-          const h = parent.clientHeight;
-          if (h >= 35 && h <= 85) {
-            return parent;
-          }
-          parent = parent.parentElement;
-        }
-      }
-    }
-
-    // 3. Find partner name element in chat
-    const partnerName = extractPartnerName();
-    if (partnerName && partnerName !== 'משתמש סטיפס') {
-      const allTextEls = document.querySelectorAll('h1, h2, h3, h4, span, div');
-      for (const el of allTextEls) {
-        if (el.children.length === 0 && el.textContent?.trim() === partnerName) {
-          let parent = el.parentElement;
-          for (let i = 0; i < 4; i++) {
-            if (!parent || parent === document.body) break;
-            const h = parent.clientHeight;
-            if (h >= 35 && h <= 85) {
-              return { container: parent, nameEl: el };
-            }
-            parent = parent.parentElement;
-          }
-        }
-      }
-    }
-
-    // 4. Modal/Dialog container top child
-    const modalBox = document.querySelector('.mat-dialog-container, [role="dialog"], [class*="chat-window"], [class*="chat_window"]');
-    if (modalBox && modalBox.firstElementChild) {
-      return modalBox.firstElementChild;
-    }
-
-    return null;
-  }
-
-  // 4. Inject Header Button when inside active chat (directly in the green bar)
-  function injectChatHeaderButton() {
-    const partnerId = getChatUserId();
-    if (!partnerId) return;
-
-    if (document.getElementById('stips-download-header-btn')) return;
-
-    const headerResult = findChatHeaderElement();
-    if (!headerResult) return;
-
-    const headerEl = headerResult.container || headerResult;
-    const nameEl = headerResult.nameEl || null;
-
-    const headerBtn = document.createElement('button');
-    headerBtn.id = 'stips-download-header-btn';
-    headerBtn.className = 'stips-download-header-action';
-    headerBtn.title = 'הורד את השיחה (Stips Download)';
-    headerBtn.type = 'button';
-    headerBtn.innerHTML = `
-      <span class="stips-dl-icon">${DOWNLOAD_ICON_SVG}</span>
-      <span class="stips-dl-text">הורד שיחה</span>
-    `;
-
-    headerBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const name = extractPartnerName();
-      startDownloadFlow(partnerId, name);
-    });
-
-    // If we found the exact name element, insert directly next to the name!
-    if (nameEl && nameEl.parentNode) {
-      nameEl.parentNode.insertBefore(headerBtn, nameEl.nextSibling);
+      document.querySelectorAll('.stips-download-header-action').forEach((b) => b.remove());
     } else {
-      headerEl.appendChild(headerBtn);
+      // Chat IS active: ensure download button is in the green header bar
+      if (activeChat.greenHeader) {
+        const isCurrentPartner = existingBtn && existingBtn.getAttribute('data-partner-id') === String(activeChat.partnerId);
+
+        if (!existingBtn || !activeChat.greenHeader.contains(existingBtn) || !isCurrentPartner) {
+          if (existingBtn) existingBtn.remove();
+
+          const btn = document.createElement('button');
+          btn.id = 'stips-download-header-btn';
+          btn.className = 'stips-download-header-action';
+          btn.setAttribute('data-partner-id', String(activeChat.partnerId));
+          btn.title = `הורד את השיחה עם ${activeChat.partnerName}`;
+          btn.type = 'button';
+          btn.innerHTML = `
+            <span class="stips-dl-icon">${DOWNLOAD_ICON_SVG}</span>
+            <span class="stips-dl-text">הורד שיחה</span>
+          `;
+
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            startDownloadFlow(activeChat.partnerId, activeChat.partnerName);
+          });
+
+          // Insert inside green header: before the 3-dots button, or after partner title
+          const threeDots = activeChat.greenHeader.querySelector('mat-icon, [role="button"], button');
+          if (threeDots && threeDots.parentNode === activeChat.greenHeader) {
+            activeChat.greenHeader.insertBefore(btn, threeDots);
+          } else {
+            activeChat.greenHeader.appendChild(btn);
+          }
+        }
+      }
     }
+
+    // Check conversation rows in inbox list
+    injectCandidateLinkButtons();
   }
 
-  // 5. Shadow DOM Modal Infrastructure (Defensive against Stips styles)
+  // 7. Shadow DOM Modal Infrastructure (Defensive against Stips styles, Zero-Flicker Architecture)
   function initShadowModal() {
     if (shadowRoot) return;
 
@@ -207,7 +339,6 @@
 
     shadowRoot = host.attachShadow({ mode: 'open' });
 
-    // Styles for Shadow DOM
     const style = document.createElement('style');
     style.textContent = `
       :host {
@@ -218,7 +349,7 @@
         --text-main: #212529;
         --text-muted: #6c757d;
         --border: #dee2e6;
-        --shadow: 0 10px 25px rgba(0,0,0,0.2);
+        --shadow: 0 10px 25px rgba(0,0,0,0.25);
         --radius: 12px;
         all: initial;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -277,6 +408,7 @@
         cursor: pointer;
         color: var(--text-muted);
         line-height: 1;
+        padding: 4px;
       }
 
       .modal-body {
@@ -286,23 +418,34 @@
       .status-text {
         font-size: 14px;
         color: var(--text-main);
-        margin-bottom: 12px;
+        margin-bottom: 14px;
         line-height: 1.5;
+        min-height: 22px;
       }
 
+      /* Animated, smooth, non-flickering progress bar */
       .progress-bar-container {
-        height: 10px;
+        height: 12px;
         background: #e9ecef;
-        border-radius: 5px;
+        border-radius: 6px;
         overflow: hidden;
         margin-bottom: 16px;
+        position: relative;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.08);
       }
 
       .progress-bar {
         height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, var(--primary), #26a69a);
-        transition: width 0.3s ease;
+        width: 100%;
+        background: linear-gradient(90deg, #009688 0%, #26a69a 30%, #80cbc4 50%, #26a69a 70%, #009688 100%);
+        background-size: 200% 100%;
+        animation: progressFlow 1.6s infinite linear;
+        border-radius: 6px;
+      }
+
+      @keyframes progressFlow {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
 
       .stats-grid {
@@ -327,7 +470,7 @@
       }
 
       .stat-val {
-        font-weight: 600;
+        font-weight: 700;
         color: var(--text-main);
         margin-top: 2px;
       }
@@ -403,27 +546,182 @@
     shadowRoot.appendChild(modalContainer);
   }
 
-  function showModal(contentHtml) {
-    initShadowModal();
-    modalContainer.innerHTML = contentHtml;
-    modalContainer.style.display = 'flex';
-  }
-
   function hideModal() {
     if (modalContainer) {
       modalContainer.style.display = 'none';
     }
   }
 
-  // 6. Download Flow Execution (The Core Loop)
-  async function startDownloadFlow(partnerId, partnerName) {
+  // Mounts the downloading modal shell ONCE to eliminate flickering
+  function mountDownloadingModal(partnerId, partnerName) {
     initShadowModal();
-    currentPartnerId = Number(partnerId);
-    currentPartnerName = partnerName || 'משתמש סטיפס';
+
+    modalContainer.innerHTML = `
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>מוריד שיחה עם ${partnerName} (${partnerId})</span>
+          </div>
+          <button class="close-btn" id="modal-close-x">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="status-text" id="modal-status-text">מתחבר ל-API...</div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="modal-progress-bar"></div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">הודעות שהורדו</span>
+              <span class="stat-val" id="modal-stat-count">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">סבבי API</span>
+              <span class="stat-val" id="modal-stat-batches">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">הודעה ישנה ביותר</span>
+              <span class="stat-val" id="modal-stat-date">מתחבר...</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">מזהה שיחה</span>
+              <span class="stat-val">${partnerId}</span>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button class="btn" id="btn-modal-pause">⏸ השהה</button>
+            <button class="btn btn-danger" id="btn-modal-cancel">ביטול</button>
+            <button class="btn" id="btn-modal-export-partial">ייצא ארכיון ביניים</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modalDOMElements = {
+      status: modalContainer.querySelector('#modal-status-text'),
+      count: modalContainer.querySelector('#modal-stat-count'),
+      batches: modalContainer.querySelector('#modal-stat-batches'),
+      date: modalContainer.querySelector('#modal-stat-date'),
+      progressBar: modalContainer.querySelector('#modal-progress-bar'),
+      pauseBtn: modalContainer.querySelector('#btn-modal-pause')
+    };
+
+    modalContainer.querySelector('#modal-close-x')?.addEventListener('click', hideModal);
+
+    modalDOMElements.pauseBtn?.addEventListener('click', () => {
+      isPaused = !isPaused;
+      modalDOMElements.pauseBtn.textContent = isPaused ? '▶ המשך הורדה' : '⏸ השהה';
+      modalDOMElements.status.textContent = isPaused ? 'ההורדה הושהתה. תוכל להמשיך בכל שלב.' : 'ממשיך הורדה...';
+    });
+
+    modalContainer.querySelector('#btn-modal-cancel')?.addEventListener('click', () => {
+      if (activeAbortController) {
+        activeAbortController.abort();
+      }
+      hideModal();
+    });
+
+    modalContainer.querySelector('#btn-modal-export-partial')?.addEventListener('click', async () => {
+      await handleExportAction('html');
+    });
+
+    modalContainer.style.display = 'flex';
+  }
+
+  // Smooth live element updates without destroying DOM or flickering
+  function updateDownloadProgress({ status, count, batches, oldestDate }) {
+    if (!modalDOMElements) return;
+
+    if (status && modalDOMElements.status) {
+      modalDOMElements.status.textContent = status;
+    }
+    if (count !== undefined && modalDOMElements.count) {
+      modalDOMElements.count.textContent = count.toLocaleString('he-IL');
+    }
+    if (batches !== undefined && modalDOMElements.batches) {
+      modalDOMElements.batches.textContent = batches;
+    }
+    if (oldestDate && modalDOMElements.date) {
+      modalDOMElements.date.textContent = oldestDate;
+    }
+  }
+
+  // Displays completion state with export buttons
+  function showCompletedModal(partnerId, partnerName, count, batches, report) {
+    if (!modalContainer) return;
+
+    const rep = report || {};
+    const warningHtml =
+      rep.undatedCount > 0
+        ? `<div class="warning-banner">שים לב: ${rep.undatedCount} הודעות ירדו ללא חותמת זמן תקינה.</div>`
+        : '';
+
+    modalContainer.innerHTML = `
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title">
+            <span>✓ שיחת ${partnerName} (${partnerId}) נשמרה</span>
+          </div>
+          <button class="close-btn" id="modal-close-x">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="success-banner">
+            <span>השיחה הורדה במלואה ונשמרה בארכיון המקומי.</span>
+          </div>
+          ${warningHtml}
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">סך הודעות</span>
+              <span class="stat-val">${count.toLocaleString('he-IL')}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">סבבי API</span>
+              <span class="stat-val">${batches}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">הודעה ראשונה</span>
+              <span class="stat-val">${rep.oldestDate || 'לא זמין'}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">הודעה אחרונה</span>
+              <span class="stat-val">${rep.newestDate || 'לא זמין'}</span>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="btn-modal-open-archive">🚀 פתח ארכיון בדפדפן</button>
+            <button class="btn" id="btn-modal-download-html">הורד HTML</button>
+            <button class="btn" id="btn-modal-download-json">JSON</button>
+            <button class="btn" id="btn-modal-download-txt">TXT</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modalContainer.querySelector('#modal-close-x')?.addEventListener('click', hideModal);
+    modalContainer.querySelector('#btn-modal-open-archive')?.addEventListener('click', handleOpenArchiveInTab);
+    modalContainer.querySelector('#btn-modal-download-html')?.addEventListener('click', () => handleExportAction('html'));
+    modalContainer.querySelector('#btn-modal-download-json')?.addEventListener('click', () => handleExportAction('json'));
+    modalContainer.querySelector('#btn-modal-download-txt')?.addEventListener('click', () => handleExportAction('txt'));
+
+    modalContainer.style.display = 'flex';
+  }
+
+  // 8. Core Download Execution
+  async function startDownloadFlow(targetId, targetName) {
+    currentPartnerId = Number(targetId);
+    currentPartnerName = targetName || 'משתמש סטיפס';
     isPaused = false;
     activeAbortController = new AbortController();
 
-    // Check if there is already a checkpoint in IndexedDB
+    // Refresh profile detection for "אתה"
+    detectMyProfile();
+
+    console.log(`🚀 Starting download for Partner ID: ${currentPartnerId} (${currentPartnerName})`);
+
+    // Mount non-flickering modal shell
+    mountDownloadingModal(currentPartnerId, currentPartnerName);
+
+    // Check existing checkpoint for this SPECIFIC partner
     const existingJob = await getJob(currentPartnerId).catch(() => null);
     const existingMessages = await getMessages(currentPartnerId).catch(() => []);
 
@@ -432,14 +730,11 @@
     let batchesCount = existingJob?.batchesCount || 0;
     let isFirstLoad = !cursor && messagesDownloaded === 0;
 
-    // Render Initial Modal UI
-    updateModalUI({
-      status: 'מתחבר ל-API של סטיפס...',
+    updateDownloadProgress({
+      status: `מתחבר ל-API ומוריד את שיחת ${currentPartnerName} (${currentPartnerId})...`,
       count: messagesDownloaded,
       batches: batchesCount,
-      oldestDate: existingMessages[0]?.gregorianDate || 'טרם הורד',
-      isCompleted: false,
-      isPaused: false
+      oldestDate: existingMessages[0]?.gregorianDate || 'טרם הורד'
     });
 
     const seenIds = new Set(existingMessages.map((m) => m.id));
@@ -458,24 +753,19 @@
         }
 
         if (activeAbortController.signal.aborted) {
-          updateModalUI({
+          updateDownloadProgress({
             status: 'ההורדה בוטלה על ידי המשתמש.',
             count: messagesDownloaded,
-            batches: batchesCount,
-            isCompleted: false,
-            isCancelled: true
+            batches: batchesCount
           });
           return;
         }
 
-        // Fetch batch
-        updateModalUI({
-          status: 'מוריד היסטוריית הודעות...',
+        updateDownloadProgress({
+          status: 'מוריד היסטוריית הודעות מה-API...',
           count: messagesDownloaded,
           batches: batchesCount,
-          oldestDate: existingMessages[0]?.gregorianDate || 'מעבד...',
-          isCompleted: false,
-          isPaused: false
+          oldestDate: existingMessages[0]?.gregorianDate || 'מעבד...'
         });
 
         let rawMessages;
@@ -486,12 +776,10 @@
             isFirstLoad,
             callerSignal: activeAbortController.signal,
             onRetry: (retryInfo) => {
-              updateModalUI({
+              updateDownloadProgress({
                 status: retryInfo.message,
                 count: messagesDownloaded,
-                batches: batchesCount,
-                isCompleted: false,
-                isRetrying: true
+                batches: batchesCount
               });
             }
           });
@@ -500,18 +788,16 @@
           throw fetchErr;
         }
 
-        // Stop condition 1: empty messages returned
         if (!rawMessages || rawMessages.length === 0) {
           console.log('No more messages returned by API. Download complete.');
           break;
         }
 
-        // Normalize and parse messages
         const normalizedBatch = [];
         let minIdInBatch = null;
 
         for (const raw of rawMessages) {
-          const norm = normalizeApiMessage(raw, currentPartnerId, currentPartnerName);
+          const norm = normalizeApiMessage(raw, currentPartnerId, currentPartnerName, myProfileInfo.myName);
           if (norm) {
             if (!seenIds.has(norm.id)) {
               seenIds.add(norm.id);
@@ -526,13 +812,11 @@
         batchesCount++;
         isFirstLoad = false;
 
-        // If no new messages were added and we already had a cursor, we reached the end
         if (normalizedBatch.length === 0 && cursor !== null) {
           console.log('No new unique messages in batch. Download reached beginning of chat.');
           break;
         }
 
-        // Save batch to IndexedDB checkpoint immediately!
         if (minIdInBatch !== null) {
           cursor = minIdInBatch;
         }
@@ -548,24 +832,18 @@
 
         messagesDownloaded = seenIds.size;
 
-        // UI progress update
-        updateModalUI({
-          status: 'מוריד ומאמת הודעות...',
+        updateDownloadProgress({
+          status: 'מאמת ושומר אצוות הודעות...',
           count: messagesDownloaded,
           batches: batchesCount,
-          oldestDate: normalizedBatch[0]?.gregorianDate || 'בתהליך...',
-          isCompleted: false,
-          isPaused: false
+          oldestDate: normalizedBatch[0]?.gregorianDate || 'בתהליך...'
         });
 
-        // Small defensive delay to remain gentle on Stips API
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 180));
       }
 
-      // Finalization & Validation
       const report = await getValidationReport(currentPartnerId);
 
-      // Save completed job
       await saveJob({
         partnerId: currentPartnerId,
         partnerName: currentPartnerName,
@@ -575,164 +853,18 @@
         status: 'completed'
       });
 
-      // Show Completion UI
-      updateModalUI({
-        status: 'ההורדה הושלמה בהצלחה!',
-        count: report.total,
-        batches: batchesCount,
-        oldestDate: report.oldestDate || 'אין תאריך',
-        isCompleted: true,
-        report
-      });
+      showCompletedModal(currentPartnerId, currentPartnerName, report.total, batchesCount, report);
     } catch (err) {
       console.error('Download error:', err);
-      updateModalUI({
+      updateDownloadProgress({
         status: `שגיאה בהורדה: ${err.message}`,
         count: messagesDownloaded,
-        batches: batchesCount,
-        isCompleted: false,
-        isError: true
+        batches: batchesCount
       });
     }
   }
 
-  // 7. Update Modal UI Content
-  function updateModalUI(state) {
-    if (!modalContainer) return;
-
-    let bodyHtml = '';
-
-    if (state.isCompleted) {
-      const rep = state.report || {};
-      const warningHtml =
-        rep.undatedCount > 0
-          ? `<div class="warning-banner">שים לב: ${rep.undatedCount} הודעות ירדו ללא חותמת זמן תקינה.</div>`
-          : '';
-
-      bodyHtml = `
-        <div class="modal-box">
-          <div class="modal-header">
-            <div class="modal-title">
-              <span>✓ שיחת ${currentPartnerName} נשמרה</span>
-            </div>
-            <button class="close-btn" id="modal-close-x">✕</button>
-          </div>
-          <div class="modal-body">
-            <div class="success-banner">
-              <span>השיחה הורדה במלואה ונשמרה בארכיון המקומי.</span>
-            </div>
-            ${warningHtml}
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-label">סך הודעות</span>
-                <span class="stat-val">${state.count.toLocaleString('he-IL')}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">סבבי API</span>
-                <span class="stat-val">${state.batches}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">הודעה ראשונה</span>
-                <span class="stat-val">${rep.oldestDate || 'לא זמין'}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">הודעה אחרונה</span>
-                <span class="stat-val">${rep.newestDate || 'לא זמין'}</span>
-              </div>
-            </div>
-
-            <div class="modal-actions">
-              <button class="btn btn-primary" id="btn-modal-open-archive">🚀 פתח ארכיון</button>
-              <button class="btn" id="btn-modal-download-html">הורד קובץ HTML</button>
-              <button class="btn" id="btn-modal-download-json">JSON</button>
-              <button class="btn" id="btn-modal-download-txt">TXT</button>
-            </div>
-          </div>
-        </div>
-      `;
-    } else {
-      // In progress / Paused UI
-      const pauseBtnText = isPaused ? '▶ המשך הורדה' : '⏸ השהה';
-      bodyHtml = `
-        <div class="modal-box">
-          <div class="modal-header">
-            <div class="modal-title">
-              <span>מוריד שיחה עם ${currentPartnerName}</span>
-            </div>
-            <button class="close-btn" id="modal-close-x">✕</button>
-          </div>
-          <div class="modal-body">
-            <div class="status-text">${state.status}</div>
-
-            <div class="progress-bar-container">
-              <div class="progress-bar" style="width: 100%;"></div>
-            </div>
-
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-label">הודעות שהורדו</span>
-                <span class="stat-val">${state.count.toLocaleString('he-IL')}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">סבבי API</span>
-                <span class="stat-val">${state.batches}</span>
-              </div>
-            </div>
-
-            <div class="modal-actions">
-              <button class="btn" id="btn-modal-pause">${pauseBtnText}</button>
-              <button class="btn btn-danger" id="btn-modal-cancel">ביטול</button>
-              <button class="btn" id="btn-modal-export-partial">ייצא ארכיון ביניים</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    modalContainer.innerHTML = bodyHtml;
-    modalContainer.style.display = 'flex';
-
-    // Bind actions
-    modalContainer.querySelector('#modal-close-x')?.addEventListener('click', hideModal);
-
-    modalContainer.querySelector('#btn-modal-pause')?.addEventListener('click', () => {
-      isPaused = !isPaused;
-      updateModalUI({
-        ...state,
-        status: isPaused ? 'ההורדה הושהתה. תוכל להמשיך בכל שלב.' : 'ממשיך הורדה...',
-        isPaused
-      });
-    });
-
-    modalContainer.querySelector('#btn-modal-cancel')?.addEventListener('click', () => {
-      if (activeAbortController) {
-        activeAbortController.abort();
-      }
-      hideModal();
-    });
-
-    modalContainer.querySelector('#btn-modal-export-partial')?.addEventListener('click', async () => {
-      await handleExportAction('html');
-    });
-
-    modalContainer.querySelector('#btn-modal-open-archive')?.addEventListener('click', async () => {
-      await handleOpenArchiveInTab();
-    });
-
-    modalContainer.querySelector('#btn-modal-download-html')?.addEventListener('click', async () => {
-      await handleExportAction('html');
-    });
-
-    modalContainer.querySelector('#btn-modal-download-json')?.addEventListener('click', async () => {
-      await handleExportAction('json');
-    });
-
-    modalContainer.querySelector('#btn-modal-download-txt')?.addEventListener('click', async () => {
-      await handleExportAction('txt');
-    });
-  }
-
-  // 8. Handle Exports & Open in Tab
+  // 9. Exports
   async function handleExportAction(format) {
     const messages = await getMessages(currentPartnerId);
     if (!messages || messages.length === 0) {
@@ -745,7 +877,11 @@
 
     if (format === 'html') {
       const html = buildArchiveHtml({
-        metadata: { partnerId: currentPartnerId, partnerName: currentPartnerName },
+        metadata: {
+          partnerId: currentPartnerId,
+          partnerName: currentPartnerName,
+          myProfileName: myProfileInfo.myName
+        },
         messages
       });
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -756,6 +892,7 @@
         exportedAt: new Date().toISOString(),
         partnerId: currentPartnerId,
         partnerName: currentPartnerName,
+        myProfileName: myProfileInfo.myName,
         messagesCount: messages.length,
         messages
       };
@@ -771,7 +908,11 @@
   async function handleOpenArchiveInTab() {
     const messages = await getMessages(currentPartnerId);
     const html = buildArchiveHtml({
-      metadata: { partnerId: currentPartnerId, partnerName: currentPartnerName },
+      metadata: {
+        partnerId: currentPartnerId,
+        partnerName: currentPartnerName,
+        myProfileName: myProfileInfo.myName
+      },
       messages
     });
 
@@ -780,37 +921,28 @@
     window.open(blobUrl, '_blank');
   }
 
-  // 9. SPA Navigation and URL Watcher
-  function checkUrlAndInject() {
-    injectCandidateLinkButtons();
-    if (getChatUserId()) {
-      injectChatHeaderButton();
-    }
-  }
-
-  // Hook history pushState and replaceState for instant SPA reactivity
+  // 10. SPA Navigation Watcher and Mutation Observer
   const origPushState = history.pushState;
   const origReplaceState = history.replaceState;
 
   history.pushState = function (...args) {
     origPushState.apply(this, args);
-    setTimeout(checkUrlAndInject, 100);
+    setTimeout(updateUI, 100);
   };
 
   history.replaceState = function (...args) {
     origReplaceState.apply(this, args);
-    setTimeout(checkUrlAndInject, 100);
+    setTimeout(updateUI, 100);
   };
 
   window.addEventListener('popstate', () => {
-    setTimeout(checkUrlAndInject, 100);
+    setTimeout(updateUI, 100);
   });
 
-  // Debounced MutationObserver for dynamic page renders
   let mutationTimeout = null;
   const observer = new MutationObserver(() => {
     clearTimeout(mutationTimeout);
-    mutationTimeout = setTimeout(checkUrlAndInject, 350);
+    mutationTimeout = setTimeout(updateUI, 200);
   });
 
   observer.observe(document.documentElement, {
@@ -818,6 +950,10 @@
     subtree: true
   });
 
+  // Regular check interval to ensure button disappears immediately when exiting chat
+  setInterval(updateUI, 600);
+
   // Initial Run
-  checkUrlAndInject();
+  detectMyProfile();
+  updateUI();
 })();
