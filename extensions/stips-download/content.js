@@ -1,7 +1,8 @@
 /**
  * Stips Download - Content Script
- * Seamless turquoise chat header injection, zero interference with main site header,
- * chat inputs or sidebars, shadow-DOM progress modal, and resilient background download coordinator.
+ * Seamless turquoise chat header injection inside .messages-toolbar mat-toolbar,
+ * inbox row injection on a.list-message, pen-friends card injection on .item-card,
+ * and zero interference with question pages or navigation bars.
  */
 
 (() => {
@@ -15,13 +16,6 @@
   let currentPartnerId = null;
   let currentPartnerName = null;
   let myProfileInfo = { myName: 'אתה', myId: null };
-  let detectedPartnerId = null;
-  let detectedPartnerName = null;
-  let lastClickedPartner = null;
-  const partnerIdMap = new Map(); // partnerName -> partnerId
-
-  let inboxCache = null;
-  let lastInboxFetch = 0;
 
   let activeAbortController = null;
   let isPaused = false;
@@ -37,27 +31,6 @@
       <line x1="12" y1="15" x2="12" y2="3"></line>
     </svg>
   `;
-
-  // Track clicks on user cards / links across the page
-  document.addEventListener('click', (e) => {
-    try {
-      const target = e.target;
-      if (!target) return;
-      const link = target.closest('a[href*="/profile/"], a[href*="/messages/"]');
-      if (link) {
-        const href = link.getAttribute('href') || '';
-        const m = href.match(/\/(?:profile|messages)\/(\d+)/);
-        if (m) {
-          const pid = Number(m[1]);
-          const name = cleanRawUserName(link.textContent) || extractCardUserName(link.closest('[class*="card"], [class*="item"], mat-list-item') || link.parentElement, link);
-          lastClickedPartner = { id: pid, name, time: Date.now() };
-          if (name && isValidUsername(name)) {
-            partnerIdMap.set(name, pid);
-          }
-        }
-      }
-    } catch (err) {}
-  }, { passive: true, capture: true });
 
   // 1. Detect Logged-In User Profile ("אתה")
   function detectMyProfile() {
@@ -92,229 +65,6 @@
     }
 
     return myProfileInfo;
-  }
-
-  // 2. Fetch or Read Cached Inbox Map (User Name -> User ID)
-  async function getInboxMap() {
-    const now = Date.now();
-    if (inboxCache && now - lastInboxFetch < 30000) {
-      return inboxCache;
-    }
-
-    const map = new Map();
-    try {
-      const resp = await fetch('/api?name=messages.inbox', { credentials: 'include' });
-      if (resp.ok) {
-        const json = await resp.json();
-        const list = json?.data?.conversations || json?.data?.messages || json?.data || [];
-        if (Array.isArray(list)) {
-          for (const item of list) {
-            const u = item.user || item.partner || item;
-            const name = cleanRawUserName(u.name || u.username || u.nick);
-            const id = Number(u.id || u.userid || item.partner_id || item.userid);
-            if (name && id) {
-              map.set(name, id);
-            }
-          }
-        }
-      }
-    } catch (e) {}
-
-    inboxCache = map;
-    lastInboxFetch = now;
-    return map;
-  }
-
-  // 3. Locate the Active Chat Dialog Container (Width 250px - 720px, Height >= 180px)
-  // STRICT RULE: Never match the full-width main site header, navbar, or sidebar!
-  function findActiveChatDialog() {
-    const containers = document.querySelectorAll(
-      '.cdk-overlay-pane, [role="dialog"], .mat-dialog-container, app-conversation, app-chat, [class*="chat-dialog"], [class*="chat-window"], [class*="chat-box"], [class*="conversation"]'
-    );
-
-    for (const el of containers) {
-      if (el.offsetParent === null) continue; // hidden
-      // Must be an actual chat dialog size, not full page width!
-      if (el.clientWidth >= 250 && el.clientWidth <= 720 && el.clientHeight >= 180) {
-        // Exclude site navbars or sidebars
-        if (el.closest('header, .site-header, app-header, mat-sidenav, mat-drawer, nav')) continue;
-        return el;
-      }
-    }
-
-    return null;
-  }
-
-  // 4. Locate the EXACT Turquoise Header Bar inside the Chat Window
-  // Walks up from the 3-dots icon to the element that HAS the turquoise background color.
-  // NEVER returns a parent white wrapper or dialog container!
-  function findTurquoiseChatHeader() {
-    // Strategy A: Find 3-dots icon inside open chat and find its turquoise parent
-    const icons = document.querySelectorAll('mat-icon, button, [role="button"], span, div');
-    for (const ic of icons) {
-      const txt = (ic.textContent || '').trim();
-      if (txt === '⋮' || txt === 'more_vert' || txt === '•••' || ic.getAttribute('aria-label')?.includes('עוד')) {
-        // Exclude site navbars or sidebars
-        if (ic.closest('header, .site-header, app-header, mat-sidenav, mat-drawer, nav')) continue;
-
-        let cur = ic;
-        while (cur && cur !== document.body && cur !== document.documentElement) {
-          // Check if this container is a chat header (height 36-92, width <= 720)
-          if (cur.clientHeight >= 36 && cur.clientHeight <= 92 && cur.clientWidth >= 180 && cur.clientWidth <= 720) {
-            const bg = window.getComputedStyle(cur).backgroundColor;
-            const rgb = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-            if (rgb) {
-              const r = parseInt(rgb[1], 10);
-              const g = parseInt(rgb[2], 10);
-              const b = parseInt(rgb[3], 10);
-              // Must be turquoise! (Stips: rgb(9, 194, 134))
-              if (g >= 150 && b >= 75 && r <= 85) {
-                // Find direct child of cur containing ic
-                let directChild = ic;
-                while (directChild.parentElement && directChild.parentElement !== cur) {
-                  directChild = directChild.parentElement;
-                }
-                return { headerEl: cur, threeDotsChild: directChild };
-              }
-            }
-          }
-          cur = cur.parentElement;
-        }
-      }
-    }
-
-    // Strategy B: Scan inside active chat dialog for any element with turquoise background
-    const dialog = findActiveChatDialog();
-    if (dialog) {
-      const candidates = dialog.querySelectorAll('mat-toolbar, header, [class*="header"], [class*="top"], div');
-      for (const el of candidates) {
-        if (el.clientHeight < 36 || el.clientHeight > 92) continue;
-        if (el.clientWidth < 180 || el.clientWidth > 720) continue;
-        if (el.querySelector('input, textarea, [class*="send"], [class*="emoji"]')) continue;
-
-        const bg = window.getComputedStyle(el).backgroundColor;
-        const rgb = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (rgb) {
-          const r = parseInt(rgb[1], 10);
-          const g = parseInt(rgb[2], 10);
-          const b = parseInt(rgb[3], 10);
-          if (g >= 150 && b >= 75 && r <= 85) {
-            return { headerEl: el, threeDotsChild: null };
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
-  // 5. Resolve Partner Info (Name & ID) from Chat Header and Environment
-  function resolveChatPartner(header) {
-    if (!header) return null;
-
-    let partnerName = '';
-    let partnerId = null;
-
-    // A. Check URL: /messages/:id or /profile/:id
-    const locMatch = window.location.href.match(/\/(?:messages|profile)\/(\d+)/);
-    if (locMatch) partnerId = Number(locMatch[1]);
-
-    // B. Extract name from leaf text nodes inside turquoise header
-    const textEls = header.querySelectorAll('h1, h2, h3, h4, span, div, a');
-    for (const t of textEls) {
-      if (t.children.length > 0) continue;
-      const txt = (t.textContent || '').trim();
-      if (!txt || txt === '⋮' || txt === 'more_vert' || txt === '•••' || txt.includes('הורד')) continue;
-      if (txt.length >= 2 && txt.length <= 40) {
-        partnerName = txt;
-        break;
-      }
-    }
-
-    // C. Check if header has link
-    const headerLink = header.querySelector('a[href*="/profile/"], a[href*="/messages/"]');
-    if (headerLink) {
-      const m = (headerLink.getAttribute('href') || '').match(/\/(?:profile|messages)\/(\d+)/);
-      if (m) partnerId = Number(m[1]);
-    }
-
-    // D. Check image src in header
-    if (!partnerId) {
-      const img = header.querySelector('img');
-      if (img && img.src) {
-        const im = img.src.match(/(?:user_?|profile_?|uid_?)(\d+)/i);
-        if (im) partnerId = Number(im[1]);
-      }
-    }
-
-    // E. Check detectedPartnerId
-    if (!partnerId && detectedPartnerId) {
-      partnerId = detectedPartnerId;
-    }
-
-    // F. Check partnerIdMap by partnerName
-    if (!partnerId && partnerName && partnerIdMap.has(partnerName)) {
-      partnerId = partnerIdMap.get(partnerName);
-    }
-
-    // G. Check lastClickedPartner if clicked recently (< 60s)
-    if (!partnerId && lastClickedPartner && (Date.now() - lastClickedPartner.time < 60000)) {
-      if (!partnerName || partnerName === lastClickedPartner.name || !lastClickedPartner.name) {
-        partnerId = lastClickedPartner.id;
-        if (!partnerName && lastClickedPartner.name) partnerName = lastClickedPartner.name;
-      }
-    }
-
-    // H. Scan page for card with the same partnerName
-    if (!partnerId && partnerName) {
-      const allLinks = document.querySelectorAll('a[href*="/profile/"], a[href*="/messages/"]');
-      for (const a of allLinks) {
-        if (a.closest('mat-sidenav, mat-drawer, header')) continue;
-        if (cleanRawUserName(a.textContent) === partnerName) {
-          const m = (a.getAttribute('href') || '').match(/\/(?:profile|messages)\/(\d+)/);
-          if (m) {
-            partnerId = Number(m[1]);
-            partnerIdMap.set(partnerName, partnerId);
-            break;
-          }
-        }
-      }
-    }
-
-    return {
-      partnerId,
-      partnerName: partnerName || (partnerId ? `משתמש (${partnerId})` : 'שיחה')
-    };
-  }
-
-  // Fallback to resolve Partner ID by querying inbox or search API if needed
-  async function resolvePartnerIdByName(name) {
-    if (!name) return null;
-    try {
-      const inboxMap = await getInboxMap();
-      if (inboxMap.has(cleanRawUserName(name))) {
-        return inboxMap.get(cleanRawUserName(name));
-      }
-    } catch (e) {}
-
-    try {
-      const searchResp = await fetch('/api?name=users.search&api_params=' + encodeURIComponent(JSON.stringify({ query: name })), { credentials: 'include' });
-      if (searchResp.ok) {
-        const sJson = await searchResp.json();
-        const users = sJson?.data?.users || sJson?.data || [];
-        if (Array.isArray(users) && users.length > 0) {
-          for (const u of users) {
-            const uName = u.name || u.username;
-            if (cleanRawUserName(uName) === cleanRawUserName(name)) {
-              return Number(u.id || u.userid);
-            }
-          }
-          if (users[0]?.id) return Number(users[0].id);
-        }
-      }
-    } catch (e) {}
-
-    return null;
   }
 
   function cleanRawUserName(raw) {
@@ -373,219 +123,162 @@
     return 'משתמש';
   }
 
-  // 6. Inject candidate link buttons (inbox dialog rows & pen-friends cards)
-  async function injectCandidateLinkButtons() {
-    const pathname = window.location.pathname;
+  // 2. Chat Header Download Button: Injected DIRECTLY inside .messages-toolbar mat-toolbar
+  // Eliminates any white bar and sits cleanly next to the 3-dots actions area.
+  function updateChatHeaderButton() {
+    const toolbar = document.querySelector('.messages-toolbar mat-toolbar, app-messages mat-toolbar');
+    const existingBtn = document.getElementById('stips-download-header-btn');
 
-    // Detect if "מסרים" or "אנשי קשר" dialog is open on screen
-    let messagesDialog = null;
-    const dialogs = document.querySelectorAll('.mat-dialog-container, [role="dialog"], .cdk-overlay-pane, [class*="dialog"]');
-    for (const d of dialogs) {
-      if (d.offsetParent === null) continue;
-      const hTxt = d.querySelector('mat-toolbar, header, [class*="header"], [class*="top"]')?.textContent || '';
-      if (hTxt.includes('מסרים') || hTxt.includes('אנשי קשר')) {
-        messagesDialog = d;
-        break;
-      }
-    }
-
-    const isPenFriends = pathname.includes('pen-friends');
-    const isMessages = pathname.includes('messages');
-
-    // If on /ask/ or /question/ AND no messages dialog is open, exit!
-    if ((pathname.includes('/ask') || pathname.includes('/question')) && !messagesDialog) {
-      document.querySelectorAll('.stips-download-row-btn').forEach((b) => b.remove());
+    if (!toolbar || toolbar.offsetParent === null) {
+      if (existingBtn) existingBtn.remove();
       return;
     }
 
-    // 1. If messagesDialog is open, inject buttons into every conversation row in it!
-    if (messagesDialog) {
-      const inboxMap = await getInboxMap();
-      const rows = messagesDialog.querySelectorAll(
-        'mat-list-item, [role="listitem"], [class*="item"], [class*="row"], [class*="conversation"], [class*="chat"]'
-      );
+    // Partner info directly from the header
+    const nameEl = toolbar.querySelector('.user-nickname, [class*="nickname"]');
+    const partnerName = nameEl?.textContent.trim() || 'משתמש סטיפס';
 
-      for (const row of rows) {
-        if (row.querySelector('.stips-download-row-btn')) continue;
-        if (row.clientHeight < 38 || row.clientHeight > 120) continue;
+    const locMatch = window.location.href.match(/\/messages\/(\d+)/);
+    const linkProfile = toolbar.querySelector('a[href*="/profile/"]');
+    const profMatch = linkProfile?.getAttribute('href')?.match(/\/profile\/(\d+)/);
+    const partnerId = locMatch ? Number(locMatch[1]) : (profMatch ? Number(profMatch[1]) : null);
 
-        let rowName = '';
-        let rowId = null;
-
-        const link = row.querySelector('a[href*="/messages/"], a[href*="/profile/"]');
-        if (link) {
-          const m = (link.getAttribute('href') || '').match(/\/(?:messages|profile)\/(\d+)/);
-          if (m) rowId = Number(m[1]);
-          rowName = cleanRawUserName(link.textContent);
-        }
-
-        if (!rowName) {
-          rowName = extractCardUserName(row, null);
-        }
-
-        if (!rowId && rowName && inboxMap.has(rowName)) {
-          rowId = inboxMap.get(rowName);
-        }
-
-        if (!rowId) {
-          const img = row.querySelector('img');
-          if (img && img.src) {
-            const im = img.src.match(/(?:user_?|profile_?|uid_?)(\d+)/i);
-            if (im) rowId = Number(im[1]);
-          }
-        }
-
-        if (rowId && rowName) {
-          try {
-            if (window.getComputedStyle(row).position === 'static') {
-              row.style.position = 'relative';
-            }
-          } catch (e) {}
-
-          const btn = document.createElement('button');
-          btn.className = 'stips-download-row-btn';
-          btn.type = 'button';
-          btn.title = `הורד שיחה עם ${rowName} (${rowId})`;
-          btn.innerHTML = `
-            <span class="stips-dl-row-icon">${DOWNLOAD_ICON_SVG}</span>
-            <span class="stips-dl-row-text">הורד</span>
-          `;
-
-          btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            startDownloadFlow(rowId, rowName);
-          });
-
-          row.appendChild(btn);
-        }
-      }
+    // If existing button is outside this toolbar, remove it
+    if (existingBtn && !toolbar.contains(existingBtn)) {
+      existingBtn.remove();
     }
 
-    // 2. Also inject for standard feed / pen-friends cards
-    if (isPenFriends || isMessages) {
-      const links = document.querySelectorAll('a[href*="/messages/"], a[href*="/profile/"]');
-      links.forEach((link) => {
-        // Exclude sidebar and main site header
-        if (link.closest('mat-sidenav, mat-drawer, .mat-sidenav, .mat-drawer, [class*="sidenav"], [class*="drawer"], [class*="sidebar"], [class*="nav-menu"], nav, aside, header, .site-header, app-navigation, app-sidebar, app-menu')) {
-          return;
+    const currentBtn = document.getElementById('stips-download-header-btn');
+    if (!currentBtn || !toolbar.contains(currentBtn)) {
+      const btn = document.createElement('button');
+      btn.id = 'stips-download-header-btn';
+      btn.className = 'stips-download-chat-btn';
+      btn.type = 'button';
+      btn.title = `הורד שיחה עם ${partnerName}`;
+      btn.innerHTML = `
+        <span class="stips-dl-btn-icon">${DOWNLOAD_ICON_SVG}</span>
+        <span class="stips-dl-btn-text">הורד שיחה</span>
+      `;
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const freshLoc = window.location.href.match(/\/messages\/(\d+)/);
+        const targetId = freshLoc ? Number(freshLoc[1]) : partnerId;
+        if (targetId) {
+          startDownloadFlow(targetId, partnerName);
+        } else {
+          alert('לא ניתן לזהות את מזהה השיחה.');
         }
-
-        // Exclude questions, answers, and comments
-        if (link.closest('app-ask, app-question, [class*="ask"], [class*="question"], [class*="answer"], [class*="response"], [class*="comment"]')) {
-          return;
-        }
-
-        // Exclude chat message dialog body
-        if (link.closest('.mat-dialog-container, [role="dialog"], [class*="chat-window"], .chat-box, mat-toolbar')) {
-          return;
-        }
-
-        const href = link.getAttribute('href') || '';
-        const match = href.match(/\/(?:messages|profile)\/(\d+)/);
-        if (!match) return;
-
-        const pid = Number(match[1]);
-        if (myProfileInfo.myId && pid === myProfileInfo.myId) return;
-
-        const rowContainer = link.closest('mat-list-item, [role="listitem"], .mat-list-item, [class*="conversation"], [class*="chat-item"], [class*="message-item"], [class*="dialog-row"], [class*="card"], li');
-        if (!rowContainer) return;
-        if (rowContainer.closest('mat-sidenav, mat-drawer, nav, aside, [class*="sidebar"]')) return;
-        if (rowContainer.getAttribute('data-stips-download-injected') === '1') return;
-        if (rowContainer.querySelector('.stips-download-row-btn')) return;
-
-        rowContainer.setAttribute('data-stips-download-injected', '1');
-
-        const rowName = extractCardUserName(rowContainer, link);
-
-        const btn = document.createElement('button');
-        btn.className = 'stips-download-row-btn';
-        btn.title = `הורד שיחה עם ${rowName} (${pid})`;
-        btn.type = 'button';
-        btn.innerHTML = `
-          <span class="stips-dl-row-icon">${DOWNLOAD_ICON_SVG}</span>
-          <span class="stips-dl-row-text">הורד</span>
-        `;
-
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          startDownloadFlow(pid, rowName);
-        });
-
-        rowContainer.appendChild(btn);
       });
+
+      const actionsArea = toolbar.querySelector('.actions-area, button.item-actions, button');
+      if (actionsArea && actionsArea.parentElement === toolbar) {
+        toolbar.insertBefore(btn, actionsArea);
+      } else {
+        toolbar.appendChild(btn);
+      }
     }
   }
 
-  // 7. Update UI: Insert single button strictly inside the Chat's Turquoise Header Bar
+  // 3. Conversation List Download Buttons: Injected inside a.list-message in the messages list
+  function injectInboxListButtons() {
+    const rows = document.querySelectorAll('a.list-message, .messages-list a[href*="/messages/"]');
+
+    rows.forEach((row) => {
+      if (row.querySelector('.stips-download-row-btn')) return;
+
+      const href = row.getAttribute('href') || '';
+      const m = href.match(/\/messages\/(\d+)/);
+      if (!m) return;
+
+      const pid = Number(m[1]);
+      const nameEl = row.querySelector('.nickname, [class*="nickname"]');
+      const partnerName = nameEl?.textContent.trim() || 'משתמש סטיפס';
+
+      try {
+        if (window.getComputedStyle(row).position === 'static') {
+          row.style.position = 'relative';
+        }
+      } catch (e) {}
+
+      const btn = document.createElement('button');
+      btn.className = 'stips-download-row-btn';
+      btn.type = 'button';
+      btn.title = `הורד שיחה עם ${partnerName} (${pid})`;
+      btn.innerHTML = `
+        <span class="stips-dl-row-icon">${DOWNLOAD_ICON_SVG}</span>
+        <span class="stips-dl-row-text">הורד</span>
+      `;
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startDownloadFlow(pid, partnerName);
+      });
+
+      row.appendChild(btn);
+    });
+  }
+
+  // 4. Pen-Friends Feed Cards: Injected inside .item-card on /pen-friends
+  function injectPenFriendsButtons() {
+    if (!window.location.pathname.includes('pen-friends')) return;
+
+    const cards = document.querySelectorAll('.item-card, app-pen-friend-card, [class*="pen-friend-card"]');
+    cards.forEach((card) => {
+      if (card.querySelector('.stips-download-row-btn')) return;
+
+      const link = card.querySelector('a[href*="/messages/"], a[href*="/profile/"]');
+      if (!link) return;
+
+      const href = link.getAttribute('href') || '';
+      const m = href.match(/\/(?:messages|profile)\/(\d+)/);
+      if (!m) return;
+
+      const pid = Number(m[1]);
+      if (myProfileInfo.myId && pid === myProfileInfo.myId) return;
+
+      const name = extractCardUserName(card, link);
+
+      try {
+        if (window.getComputedStyle(card).position === 'static') {
+          card.style.position = 'relative';
+        }
+      } catch (e) {}
+
+      const btn = document.createElement('button');
+      btn.className = 'stips-download-row-btn';
+      btn.type = 'button';
+      btn.title = `הורד שיחה עם ${name} (${pid})`;
+      btn.innerHTML = `
+        <span class="stips-dl-row-icon">${DOWNLOAD_ICON_SVG}</span>
+        <span class="stips-dl-row-text">הורד</span>
+      `;
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        startDownloadFlow(pid, name);
+      });
+
+      card.appendChild(btn);
+    });
+  }
+
+  // 5. Update UI: Orchestrates header, inbox list, and pen friends
   function updateUI() {
-    // 1. Immediately clean up ANY button that appeared in the site main navbar, header, or input area
+    // Prune any rogue button in site navbar or input area
     document.querySelectorAll(
-      'header #stips-download-header-btn, .site-header #stips-download-header-btn, app-header #stips-download-header-btn, nav #stips-download-header-btn, [class*="navbar"] #stips-download-header-btn, [class*="site-header"] #stips-download-header-btn, input ~ #stips-download-header-btn, textarea ~ #stips-download-header-btn, [class*="bottom"] #stips-download-header-btn, [class*="input"] #stips-download-header-btn, .stips-download-mini-btn'
+      'header #stips-download-header-btn, .site-header #stips-download-header-btn, app-header #stips-download-header-btn, nav #stips-download-header-btn, [class*="navbar"] #stips-download-header-btn, input ~ #stips-download-header-btn, textarea ~ #stips-download-header-btn'
     ).forEach((b) => b.remove());
 
-    const headerMatch = findTurquoiseChatHeader();
-    const existingBtn = document.getElementById('stips-download-header-btn');
-
-    if (!headerMatch) {
-      if (existingBtn) existingBtn.remove();
-    } else {
-      const { headerEl, threeDotsChild } = headerMatch;
-      const info = resolveChatPartner(headerEl);
-      detectedPartnerName = info.partnerName;
-      if (info.partnerId) detectedPartnerId = info.partnerId;
-
-      // Clean up any button that is NOT inside this exact headerEl
-      if (existingBtn && !headerEl.contains(existingBtn)) {
-        existingBtn.remove();
-      }
-
-      const currentBtn = document.getElementById('stips-download-header-btn');
-      if (!currentBtn || !headerEl.contains(currentBtn)) {
-        const btn = document.createElement('button');
-        btn.id = 'stips-download-header-btn';
-        btn.className = 'stips-download-chat-btn';
-        btn.type = 'button';
-        btn.title = 'הורד שיחה זו לארכיון מקומי';
-        btn.innerHTML = `
-          <span class="stips-dl-btn-icon">${DOWNLOAD_ICON_SVG}</span>
-          <span class="stips-dl-btn-text">הורד שיחה</span>
-        `;
-
-        btn.addEventListener('click', async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-
-          const freshInfo = resolveChatPartner(headerEl);
-          let targetId = freshInfo.partnerId || detectedPartnerId;
-          let targetName = freshInfo.partnerName || detectedPartnerName || 'משתמש סטיפס';
-
-          if (!targetId) {
-            targetId = await resolvePartnerIdByName(targetName);
-          }
-
-          if (targetId) {
-            startDownloadFlow(targetId, targetName);
-          } else {
-            alert('לא ניתן לזהות את מזהה השיחה באופן אוטומטי. אנא נסה לרענן את העמוד או לפתוח את השיחה מחדש.');
-          }
-        });
-
-        // Insert directly inside headerEl before threeDotsChild!
-        if (threeDotsChild && threeDotsChild.parentElement === headerEl) {
-          headerEl.insertBefore(btn, threeDotsChild);
-        } else {
-          headerEl.appendChild(btn);
-        }
-      }
-    }
-
-    // Candidate buttons in messages list and feed rows
-    injectCandidateLinkButtons();
+    updateChatHeaderButton();
+    injectInboxListButtons();
+    injectPenFriendsButtons();
   }
 
-  // 8. Shadow DOM Modal Infrastructure (Zero-Flicker Architecture & Pointer Protection)
+  // 6. Shadow DOM Modal Infrastructure (Zero-Flicker Architecture & Pointer Protection)
   function initShadowModal() {
     if (shadowRoot) return;
 
@@ -970,7 +663,7 @@
     modalContainer.style.display = 'flex';
   }
 
-  // 9. Core Download Execution
+  // 7. Core Download Execution
   async function startDownloadFlow(targetId, targetName) {
     currentPartnerId = Number(targetId);
     currentPartnerName = targetName || 'משתמש סטיפס';
@@ -1126,7 +819,7 @@
     }
   }
 
-  // 10. Exports
+  // 8. Exports
   async function handleExportAction(format) {
     const messages = await getMessages(currentPartnerId);
     if (!messages || messages.length === 0) {
@@ -1183,7 +876,7 @@
     window.open(blobUrl, '_blank');
   }
 
-  // 11. SPA Navigation Watcher and Mutation Observer
+  // 9. SPA Navigation Watcher and Mutation Observer
   const origPushState = history.pushState;
   const origReplaceState = history.replaceState;
 
