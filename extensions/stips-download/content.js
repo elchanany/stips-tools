@@ -843,7 +843,7 @@
       triggerFileDownload(blob, `stips_${safeName}_${dateStr}.html`);
     } else if (format === 'json') {
       const payload = {
-        version: '1.0.0',
+        version: '1.0.1',
         exportedAt: new Date().toISOString(),
         partnerId: currentPartnerId,
         partnerName: currentPartnerName,

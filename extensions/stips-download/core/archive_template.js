@@ -502,7 +502,7 @@ function generateArchiveAppFunction() {
  */
 function buildArchiveHtml({ metadata, messages }) {
   const dataPayload = {
-    version: '1.0.0',
+    version: '1.0.1',
     exportedAt: new Date().toISOString(),
     partnerId: metadata?.partnerId || 0,
     partnerName: metadata?.partnerName || 'שיחה',
