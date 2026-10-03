@@ -88,40 +88,6 @@
     return true;
   }
 
-  function extractCardUserName(item, link) {
-    if (link) {
-      const linkText = cleanRawUserName(link.textContent);
-      if (isValidUsername(linkText)) return linkText;
-
-      const userHeader = link.closest('[class*="user"], [class*="author"], [class*="profile"], [class*="header"], [class*="item"]');
-      if (userHeader) {
-        const nickEls = userHeader.querySelectorAll('[class*="user-name"], [class*="username"], [class*="nick"], [class*="author"], strong, b');
-        for (const el of nickEls) {
-          if (el.children.length > 0) continue;
-          const t = cleanRawUserName(el.textContent);
-          if (isValidUsername(t)) return t;
-        }
-
-        const spans = userHeader.querySelectorAll('span, a');
-        for (const s of spans) {
-          if (s.children.length > 0) continue;
-          const t = cleanRawUserName(s.textContent);
-          if (isValidUsername(t)) return t;
-        }
-      }
-    }
-
-    if (item) {
-      const directUserEls = item.querySelectorAll('[class*="username"], [class*="user-name"], [class*="author"], [class*="nick"]');
-      for (const el of directUserEls) {
-        if (el.children.length > 0) continue;
-        const t = cleanRawUserName(el.textContent);
-        if (isValidUsername(t)) return t;
-      }
-    }
-
-    return 'משתמש';
-  }
 
   // 2. Chat Header Download Button: Injected DIRECTLY inside .messages-toolbar mat-toolbar
   // Eliminates any white bar and sits cleanly next to the 3-dots actions area.
@@ -217,65 +183,20 @@
         startDownloadFlow(pid, partnerName);
       });
 
+      row.style.position = 'relative';
       row.appendChild(btn);
     });
   }
 
-  // 4. Pen-Friends Feed Cards: Injected inside .item-card on /pen-friends
-  function injectPenFriendsButtons() {
-    if (!window.location.pathname.includes('pen-friends')) return;
-
-    const cards = document.querySelectorAll('.item-card, app-pen-friend-card, [class*="pen-friend-card"]');
-    cards.forEach((card) => {
-      if (card.querySelector('.stips-download-row-btn')) return;
-
-      const link = card.querySelector('a[href*="/messages/"], a[href*="/profile/"]');
-      if (!link) return;
-
-      const href = link.getAttribute('href') || '';
-      const m = href.match(/\/(?:messages|profile)\/(\d+)/);
-      if (!m) return;
-
-      const pid = Number(m[1]);
-      if (myProfileInfo.myId && pid === myProfileInfo.myId) return;
-
-      const name = extractCardUserName(card, link);
-
-      try {
-        if (window.getComputedStyle(card).position === 'static') {
-          card.style.position = 'relative';
-        }
-      } catch (e) {}
-
-      const btn = document.createElement('button');
-      btn.className = 'stips-download-row-btn';
-      btn.type = 'button';
-      btn.title = `הורד שיחה עם ${name} (${pid})`;
-      btn.innerHTML = `
-        <span class="stips-dl-row-icon">${DOWNLOAD_ICON_SVG}</span>
-        <span class="stips-dl-row-text">הורד</span>
-      `;
-
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        startDownloadFlow(pid, name);
-      });
-
-      card.appendChild(btn);
-    });
-  }
-
-  // 5. Update UI: Orchestrates header, inbox list, and pen friends
+  // 4. Update UI: Orchestrates header and inbox list (strictly no buttons in pen-friends, sidebars, or headers)
   function updateUI() {
-    // Prune any rogue button in site navbar or input area
+    // Prune any rogue buttons
     document.querySelectorAll(
-      'header #stips-download-header-btn, .site-header #stips-download-header-btn, app-header #stips-download-header-btn, nav #stips-download-header-btn, [class*="navbar"] #stips-download-header-btn, input ~ #stips-download-header-btn, textarea ~ #stips-download-header-btn'
+      'header #stips-download-header-btn, .site-header #stips-download-header-btn, app-header #stips-download-header-btn, nav #stips-download-header-btn, [class*="navbar"] #stips-download-header-btn, input ~ #stips-download-header-btn, textarea ~ #stips-download-header-btn, .item-card .stips-download-row-btn, app-pen-friends .stips-download-row-btn, [class*="pen-friend"] .stips-download-row-btn'
     ).forEach((b) => b.remove());
 
     updateChatHeaderButton();
     injectInboxListButtons();
-    injectPenFriendsButtons();
   }
 
   // 6. Shadow DOM Modal Infrastructure (Zero-Flicker Architecture & Pointer Protection)

@@ -35,29 +35,37 @@ mat-drawer .stips-download-row-btn,
 [class*="sidebar"] .stips-download-row-btn,
 nav .stips-download-row-btn,
 aside .stips-download-row-btn,
-/* Strictly hide buttons on question pages, answers, and comments */
+/* Strictly hide buttons on question pages, answers, comments, and pen-friends */
 app-ask .stips-download-row-btn,
 app-question .stips-download-row-btn,
 .ask-page .stips-download-row-btn,
 [class*="ask"] .stips-download-row-btn,
 [class*="question"] .stips-download-row-btn,
 [class*="answer"] .stips-download-row-btn,
-[class*="response"] .stips-download-row-btn {
+[class*="response"] .stips-download-row-btn,
+app-pen-friends .stips-download-row-btn,
+[class*="pen-friend"] .stips-download-row-btn,
+.item-card .stips-download-row-btn {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
-/* Clean, side-aligned Download Button for conversation rows & list items */
+/* Ensure row is relative anchor */
+a.list-message {
+  position: relative !important;
+}
+
+/* Clean, side-aligned Download Button for conversation rows (shifted right to never overlap unread badge) */
 .stips-download-row-btn {
   position: absolute !important;
-  left: 14px !important;
-  bottom: 10px !important;
+  left: 56px !important;
+  bottom: 8px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 4px !important;
-  padding: 3px 10px !important;
+  padding: 3px 9px !important;
   background-color: #e8f8f2 !important;
   color: #09c286 !important;
   border: 1px solid #09c286 !important;
